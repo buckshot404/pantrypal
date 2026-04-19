@@ -23,6 +23,7 @@ PantryPal is a mobile-friendly Next.js app that turns the ingredients you alread
 - Saved favorite meals in local storage
 - Grocery checklist for common missing items
 - Vercel-ready deployment config and app metadata
+- Automatic demo fallback when the live OpenAI API is unavailable or out of quota
 
 ## Project Structure
 
@@ -120,6 +121,7 @@ The included [vercel.json](C:/Users/kgb19/OneDrive/Documents/New%20project/verce
 - The regenerate button reuses the last successful ingredient list and active filters.
 - Favorite meals and grocery checklist state are saved in local storage.
 - The API sanitizes the AI response before returning it to the UI.
+- If the OpenAI API key is missing or the API returns quota/auth errors, PantryPal switches to a local demo generator so presentations can continue.
 
 ## Next Improvements
 

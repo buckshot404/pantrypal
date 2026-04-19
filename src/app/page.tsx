@@ -215,6 +215,15 @@ export default function HomePage() {
 
           <div className="space-y-4">
             <FilterSummary filters={selectedFilters} />
+            {results?.source === "demo" ? (
+              <div className="rounded-[1.5rem] border border-citrus/35 bg-citrus/20 p-4 shadow-card backdrop-blur">
+                <p className="text-sm font-semibold text-amber-950">Demo mode active</p>
+                <p className="mt-1 text-sm leading-6 text-amber-950/80">
+                  {results.note ??
+                    "PantryPal is showing locally generated meal ideas so the demo keeps working even without live API quota."}
+                </p>
+              </div>
+            ) : null}
             <ResultsSection
               data={results}
               isLoading={isLoading}

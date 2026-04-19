@@ -2,6 +2,24 @@ import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import type { DietaryFilter, MealResponse, MealSuggestion, PantryMode } from "@/types/meal";
 
+const EXTRA_ITEMS = [
+  "olive oil",
+  "garlic",
+  "onion",
+  "soy sauce",
+  "butter",
+  "lime",
+  "black pepper",
+  "salt",
+  "eggs",
+  "broth",
+  "beans",
+  "tomato sauce",
+  "spinach",
+  "yogurt",
+  "hot sauce"
+];
+
 function buildPrompt(ingredients: string[], mode: PantryMode, filters: DietaryFilter[]) {
   const modeInstruction =
     mode === "lazy"
@@ -102,47 +120,155 @@ function sanitizeMealResponse(data: MealResponse): MealResponse {
 
   return {
     meals,
-    groceryList
+    groceryList,
+    source: data.source === "demo" ? "demo" : "ai",
+    note: typeof data.note === "string" ? data.note : undefined
+  };
+}
+
+function titleCase(value: string) {
+  return value.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function pickExtras(ingredients: string[], count: number) {
+  return EXTRA_ITEMS.filter((item) => !ingredients.includes(item)).slice(0, count);
+}
+
+function buildDemoMeal(
+  title: string,
+  summary: string,
+  ingredients: string[],
+  fitLabel: MealSuggestion["fitLabel"],
+  timeEstimate: string,
+  steps: string[],
+  missingIngredients: string[]
+): MealSuggestion {
+  return {
+    title,
+    summary,
+    fitLabel,
+    missingIngredients,
+    steps,
+    timeEstimate,
+    pantryHighlights: ingredients.slice(0, 3).map(titleCase)
+  };
+}
+
+function generateDemoMeals(
+  ingredients: string[],
+  mode: PantryMode,
+  filters: DietaryFilter[]
+): MealResponse {
+  const primary = ingredients[0] ?? "pantry staples";
+  const secondary = ingredients[1] ?? "whatever is in the fridge";
+  const extraOne = pickExtras(ingredients, 1);
+  const extraTwo = pickExtras(ingredients, 2);
+  const timeFast = mode === "lazy" ? "15 minutes" : "12 minutes";
+  const timeSlow = mode === "lazy" ? "20 minutes" : "15 minutes";
+  const filterText =
+    filters.length > 0 ? ` tuned for ${filters.join(", ")}` : "";
+
+  const meals: MealSuggestion[] = [
+    buildDemoMeal(
+      `${titleCase(primary)} skillet toss`,
+      `A fast one-pan dinner${filterText} that leans on what you already have.`,
+      ingredients,
+      "Uses most ingredients",
+      timeFast,
+      [
+        `Chop or tear the ${primary} and ${secondary} into bite-size pieces.`,
+        "Warm a skillet and add the ingredients that need the longest cook first.",
+        "Stir in the quicker pantry items and season to taste.",
+        "Cook until everything is hot, lightly crisped, and ready to serve."
+      ],
+      []
+    ),
+    buildDemoMeal(
+      `Loaded ${titleCase(primary)} wraps`,
+      `A flexible wrap-style meal that turns leftovers into something that feels planned.`,
+      ingredients,
+      "Requires 1-2 extra items",
+      timeFast,
+      [
+        `Warm the ${primary} with any cooked ingredients you have on hand.`,
+        `Add the ${secondary} and a quick sauce or seasoning if you have one.`,
+        "Pile everything into wraps, tortillas, or lettuce cups.",
+        "Fold and toast briefly if you want a little crunch."
+      ],
+      extraTwo
+    ),
+    buildDemoMeal(
+      `${titleCase(primary)} rice bowl`,
+      `A practical bowl meal that uses your pantry base and one simple finishing touch.`,
+      ingredients,
+      "Uses most ingredients",
+      timeSlow,
+      [
+        "Heat any grains, rice, or starch you already have prepared.",
+        `Cook or reheat the ${primary} and ${secondary} with a little oil or broth.`,
+        "Layer everything into bowls and add any crunchy or fresh topping available.",
+        "Season and serve while warm."
+      ],
+      extraOne
+    ),
+    buildDemoMeal(
+      `Pantry hash with ${titleCase(primary)}`,
+      `A low-effort clean-out-the-fridge option that still feels like a real meal.`,
+      ingredients,
+      "Requires 1-2 extra items",
+      mode === "lazy" ? "18 minutes" : "14 minutes",
+      [
+        "Dice the heartiest ingredients small so they cook fast.",
+        "Brown everything in a skillet until the edges pick up color.",
+        "Add a splash of sauce, broth, or seasoning to bring it together.",
+        "Finish with an egg, herbs, or cheese if you have them."
+      ],
+      pickExtras(ingredients, 2)
+    )
+  ];
+
+  return {
+    meals,
+    groceryList: Array.from(new Set(meals.flatMap((meal) => meal.missingIngredients))).slice(0, 8),
+    source: "demo",
+    note: "Demo mode is active, so these meal ideas are generated locally instead of calling the OpenAI API."
   };
 }
 
 export async function POST(request: Request) {
-  if (!process.env.OPENAI_API_KEY) {
-    return NextResponse.json(
-      { error: "Missing OPENAI_API_KEY. Add it to your .env.local file." },
-      { status: 500 }
-    );
-  }
+  const body = (await request.json().catch(() => ({}))) as {
+    ingredients?: string[];
+    mode?: PantryMode;
+    filters?: DietaryFilter[];
+  };
+
+  const ingredients = Array.isArray(body.ingredients)
+    ? body.ingredients.filter(
+        (item): item is string => typeof item === "string" && Boolean(item.trim())
+      )
+    : [];
+
+  const mode = body.mode === "struggle" ? "struggle" : "lazy";
+  const filters = Array.isArray(body.filters)
+    ? body.filters.filter(
+        (filter): filter is DietaryFilter =>
+          filter === "vegetarian" ||
+          filter === "dairy-free" ||
+          filter === "gluten-free" ||
+          filter === "high-protein"
+      )
+    : [];
 
   try {
-    const body = (await request.json()) as {
-      ingredients?: string[];
-      mode?: PantryMode;
-      filters?: DietaryFilter[];
-    };
-
-    const ingredients = Array.isArray(body.ingredients)
-      ? body.ingredients.filter(
-          (item): item is string => typeof item === "string" && Boolean(item.trim())
-        )
-      : [];
-
-    const mode = body.mode === "struggle" ? "struggle" : "lazy";
-    const filters = Array.isArray(body.filters)
-      ? body.filters.filter(
-          (filter): filter is DietaryFilter =>
-            filter === "vegetarian" ||
-            filter === "dairy-free" ||
-            filter === "gluten-free" ||
-            filter === "high-protein"
-        )
-      : [];
-
     if (ingredients.length === 0) {
       return NextResponse.json(
         { error: "Please provide at least one ingredient." },
         { status: 400 }
       );
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(generateDemoMeals(ingredients, mode, filters));
     }
 
     const client = new OpenAI({
@@ -182,6 +308,16 @@ export async function POST(request: Request) {
 
     return NextResponse.json(sanitized);
   } catch (error) {
+    const status = typeof error === "object" && error !== null && "status" in error
+      ? Number((error as { status?: unknown }).status)
+      : undefined;
+
+    if (status === 429 || status === 401 || status === 403) {
+      if (ingredients.length > 0) {
+        return NextResponse.json(generateDemoMeals(ingredients, mode, filters));
+      }
+    }
+
     const message =
       error instanceof Error ? error.message : "Unable to generate meals at the moment.";
 

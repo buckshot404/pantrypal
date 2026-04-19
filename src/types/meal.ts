@@ -14,4 +14,6 @@ export type MealSuggestion = {
 export type MealResponse = {
   meals: MealSuggestion[];
   groceryList: string[];
+  source?: "ai" | "demo";
+  note?: string;
 };
