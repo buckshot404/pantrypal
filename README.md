@@ -2,6 +2,8 @@
 
 PantryPal is a mobile-friendly Next.js app that turns the ingredients you already have into realistic meal ideas with short instructions, dietary-aware generation, favorites, and a checklist grocery panel for missing items.
 
+Live demo: [pantrypal-nine.vercel.app](https://pantrypal-nine.vercel.app)
+
 ## Tech Stack
 
 - Next.js 16 with the App Router
@@ -24,6 +26,13 @@ PantryPal is a mobile-friendly Next.js app that turns the ingredients you alread
 - Grocery checklist for common missing items
 - Vercel-ready deployment config and app metadata
 - Automatic demo fallback when the live OpenAI API is unavailable or out of quota
+
+## Showcase Highlights
+
+- Live deployed demo for student showcases and presentations
+- Demo-safe fallback mode so meal generation still works without live API quota
+- Mobile-friendly interface built for quick ingredient entry and fast visual feedback
+- Clear product framing around reducing food waste and lowering decision fatigue
 
 ## Project Structure
 
