@@ -1,4 +1,4 @@
-import type { DietaryFilter, PantryMode, ServingSize } from "@/types/meal";
+import type { DietaryFilter, NutritionGoal, PantryMode, ServingSize } from "@/types/meal";
 
 export const MODE_COPY: Record<
   PantryMode,
@@ -82,4 +82,31 @@ export const PANTRY_STAPLES = [
   "soy sauce",
   "broth",
   "tomato sauce"
+];
+
+export const NUTRITION_GOALS: Array<{
+  id: NutritionGoal;
+  label: string;
+  description: string;
+}> = [
+  {
+    id: "balanced",
+    label: "Balanced",
+    description: "Keep the week practical and generally well-rounded."
+  },
+  {
+    id: "high-protein",
+    label: "High protein",
+    description: "Prioritize fuller meals with stronger protein focus."
+  },
+  {
+    id: "lower-carb",
+    label: "Lower carb",
+    description: "Lean lighter on breads, pasta, and rice-heavy meals."
+  },
+  {
+    id: "budget-conscious",
+    label: "Budget conscious",
+    description: "Minimize extra purchases and reuse ingredients aggressively."
+  }
 ];

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { FavoritesSection } from "@/components/favorites-section";
 import { FilterSummary } from "@/components/filter-summary";
+import { GroceryExport } from "@/components/grocery-export";
 import { HistoryList } from "@/components/history-list";
 import { IngredientForm } from "@/components/ingredient-form";
 import { PlanningSummary } from "@/components/planning-summary";
@@ -23,6 +24,7 @@ import type {
   DietaryFilter,
   MealResponse,
   MealSuggestion,
+  NutritionGoal,
   PantryMode,
   ServingSize
 } from "@/types/meal";
@@ -32,6 +34,7 @@ export default function HomePage() {
   const [mode, setMode] = useState<PantryMode>("lazy");
   const [selectedFilters, setSelectedFilters] = useState<DietaryFilter[]>([]);
   const [servingSize, setServingSize] = useState<ServingSize>("3-4");
+  const [nutritionGoal, setNutritionGoal] = useState<NutritionGoal>("balanced");
   const [selectedStaples, setSelectedStaples] = useState<string[]>(PANTRY_STAPLES.slice(0, 4));
   const [results, setResults] = useState<MealResponse | null>(null);
   const [weeklyPlan, setWeeklyPlan] = useState<MealResponse["weeklyPlan"] | null>(null);
@@ -143,6 +146,7 @@ export default function HomePage() {
           mode,
           filters: selectedFilters,
           servingSize,
+          nutritionGoal,
           staples: selectedStaples
         })
       });
@@ -194,6 +198,7 @@ export default function HomePage() {
           mode,
           filters: selectedFilters,
           servingSize,
+          nutritionGoal,
           staples: selectedStaples,
           includeWeeklyPlan: true
         })
@@ -306,6 +311,7 @@ export default function HomePage() {
               mode={mode}
               selectedFilters={selectedFilters}
               servingSize={servingSize}
+              nutritionGoal={nutritionGoal}
               selectedStaples={selectedStaples}
               isLoading={isLoading}
               error={error}
@@ -313,6 +319,7 @@ export default function HomePage() {
               onModeChange={setMode}
               onFilterToggle={toggleFilter}
               onServingChange={setServingSize}
+              onNutritionGoalChange={setNutritionGoal}
               onStapleToggle={toggleStaple}
               onSubmit={() => generateMeals(input)}
               onRegenerate={() => generateMeals(lastSubmittedInput || input)}
@@ -323,7 +330,11 @@ export default function HomePage() {
 
           <div className="space-y-4">
             <FilterSummary filters={selectedFilters} />
-            <PlanningSummary servingSize={servingSize} selectedStaples={selectedStaples} />
+            <PlanningSummary
+              servingSize={servingSize}
+              nutritionGoal={nutritionGoal}
+              selectedStaples={selectedStaples}
+            />
             {results?.source === "demo" ? (
               <div className="rounded-[1.5rem] border border-citrus/35 bg-citrus/20 p-4 shadow-card backdrop-blur">
                 <p className="text-sm font-semibold text-amber-950">Demo mode active</p>
@@ -355,6 +366,11 @@ export default function HomePage() {
               onGenerate={generateWeeklyPlan}
             />
             <PricingCards onUpgradeClick={() => setIsUpgradeModalOpen(true)} />
+            <GroceryExport
+              exportData={results?.groceryExport ?? null}
+              isUnlocked={plusPreviewUnlocked}
+              onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
+            />
             <div className="rounded-[1.5rem] border border-white/75 bg-white/80 p-5 shadow-card backdrop-blur">
               <p className="text-base font-semibold text-ink">Deployment ready</p>
               <p className="mt-2 text-sm leading-6 text-ink/65">

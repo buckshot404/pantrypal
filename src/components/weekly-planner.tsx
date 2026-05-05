@@ -96,6 +96,11 @@ export function WeeklyPlanner({
                   <p className="mt-1 text-sm leading-6 text-ink/75">{day.leftoverTip}</p>
                 </div>
               </div>
+              {day.leftoverSource ? (
+                <div className="mt-3 rounded-2xl bg-amber-50 px-3 py-3 text-sm leading-6 text-amber-950">
+                  <span className="font-semibold">Leftover chain:</span> {day.leftoverSource}
+                </div>
+              ) : null}
             </article>
           ))}
         </div>

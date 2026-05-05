@@ -21,6 +21,7 @@ Live demo: [pantrypal-nine.vercel.app](https://pantrypal-nine.vercel.app)
 - Premium-style weekly planner preview for PantryPal Plus
 - Reusable premium badge system for paid feature positioning
 - Fake checkout-style upgrade modal and free-vs-plus pricing cards for demos
+- PantryPal Plus nutrition goals, leftover chaining, and grocery export
 - 3 to 5 AI-generated meal cards
 - Labels for `Uses most ingredients` and `Requires 1-2 extra items`
 - Loading states and empty-input validation

@@ -1,8 +1,18 @@
 "use client";
 
 import { FormEvent } from "react";
-import { DIETARY_FILTERS, PANTRY_STAPLES, SERVING_SIZES } from "@/lib/constants";
-import type { DietaryFilter, PantryMode, ServingSize } from "@/types/meal";
+import {
+  DIETARY_FILTERS,
+  NUTRITION_GOALS,
+  PANTRY_STAPLES,
+  SERVING_SIZES
+} from "@/lib/constants";
+import type {
+  DietaryFilter,
+  NutritionGoal,
+  PantryMode,
+  ServingSize
+} from "@/types/meal";
 import { ModeToggle } from "@/components/mode-toggle";
 
 type IngredientFormProps = {
@@ -10,6 +20,7 @@ type IngredientFormProps = {
   mode: PantryMode;
   selectedFilters: DietaryFilter[];
   servingSize: ServingSize;
+  nutritionGoal: NutritionGoal;
   selectedStaples: string[];
   isLoading: boolean;
   error: string | null;
@@ -17,6 +28,7 @@ type IngredientFormProps = {
   onModeChange: (mode: PantryMode) => void;
   onFilterToggle: (filter: DietaryFilter) => void;
   onServingChange: (serving: ServingSize) => void;
+  onNutritionGoalChange: (goal: NutritionGoal) => void;
   onStapleToggle: (staple: string) => void;
   onSubmit: () => void;
   onRegenerate: () => void;
@@ -28,6 +40,7 @@ export function IngredientForm({
   mode,
   selectedFilters,
   servingSize,
+  nutritionGoal,
   selectedStaples,
   isLoading,
   error,
@@ -35,6 +48,7 @@ export function IngredientForm({
   onModeChange,
   onFilterToggle,
   onServingChange,
+  onNutritionGoalChange,
   onStapleToggle,
   onSubmit,
   onRegenerate,
@@ -92,6 +106,34 @@ export function IngredientForm({
                 <p className={`mt-1 text-xs leading-5 ${isActive ? "text-white/80" : "text-current/80"}`}>
                   {option.description}
                 </p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <p className="text-sm font-semibold text-ink">Nutrition goal for Plus planning</p>
+          <p className="text-sm text-ink/65">This helps the premium weekly planner steer the whole week.</p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {NUTRITION_GOALS.map((goal) => {
+            const isActive = nutritionGoal === goal.id;
+
+            return (
+              <button
+                key={goal.id}
+                type="button"
+                onClick={() => onNutritionGoalChange(goal.id)}
+                className={`rounded-[1.15rem] border px-4 py-3 text-left transition ${
+                  isActive
+                    ? "border-amber-300 bg-amber-50 text-amber-950"
+                    : "border-ink/10 bg-oat text-ink hover:border-amber-200"
+                }`}
+              >
+                <p className="text-sm font-semibold">{goal.label}</p>
+                <p className="mt-1 text-xs leading-5 text-current/80">{goal.description}</p>
               </button>
             );
           })}

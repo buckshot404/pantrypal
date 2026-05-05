@@ -4,6 +4,7 @@ import type {
   DietaryFilter,
   MealResponse,
   MealSuggestion,
+  NutritionGoal,
   PantryMode,
   ServingSize,
   WeeklyPlanDay
@@ -36,13 +37,32 @@ const WEEK_DAYS: WeeklyPlanDay[] = [
   "Sunday"
 ];
 
+const GROCERY_CATEGORY_MAP: Record<string, string> = {
+  yogurt: "Dairy",
+  butter: "Dairy",
+  eggs: "Dairy",
+  spinach: "Produce",
+  onion: "Produce",
+  garlic: "Produce",
+  lime: "Produce",
+  beans: "Pantry",
+  broth: "Pantry",
+  "soy sauce": "Pantry",
+  "tomato sauce": "Pantry",
+  "hot sauce": "Pantry",
+  "olive oil": "Pantry",
+  "black pepper": "Pantry",
+  salt: "Pantry"
+};
+
 function buildPrompt(
   ingredients: string[],
   mode: PantryMode,
   filters: DietaryFilter[],
   servingSize: ServingSize,
   staples: string[],
-  includeWeeklyPlan: boolean
+  includeWeeklyPlan: boolean,
+  nutritionGoal: NutritionGoal
 ) {
   const modeInstruction =
     mode === "lazy"
@@ -56,6 +76,7 @@ function buildPrompt(
     staples.length > 0
       ? `Assume the user already has these pantry staples: ${staples.join(", ")}.`
       : "Do not assume any pantry staples beyond the provided ingredients.";
+  const nutritionInstruction = `Optimize premium planning for this nutrition goal: ${nutritionGoal}.`;
 
   return `
 You are PantryPal, a practical home-cooking assistant.
@@ -83,7 +104,16 @@ Return JSON only with this shape:
         "mealTitle": "string",
         "mealSummary": "string",
         "prepFocus": "string",
-        "leftoverTip": "string"
+        "leftoverTip": "string",
+        "leftoverSource": "string"
+      }
+    ]
+  },
+  "groceryExport": {
+    "sections": [
+      {
+        "category": "string",
+        "items": ["string"]
       }
     ]
   }
@@ -105,13 +135,15 @@ Rules:
 - Grocery list should contain a deduplicated short list of the most useful missing items across all meals.
 - ${
     includeWeeklyPlan
-      ? "Include a 7-day weeklyPlan that reuses meal ideas intelligently across the week."
+      ? "Include a 7-day weeklyPlan that reuses meal ideas intelligently across the week with clear leftover chaining when helpful."
       : "If weeklyPlan is not needed, return an empty weeklyPlan.days array."
   }
+- Always include a groceryExport grouped into useful shopping categories.
 - Do not include markdown or commentary.
 - ${modeInstruction}
 - ${filterInstruction}
 - ${stapleInstruction}
+- ${nutritionInstruction}
 
 Requested serving size:
 ${servingSize}
@@ -199,10 +231,28 @@ function sanitizeMealResponse(data: MealResponse): MealResponse {
             leftoverTip:
               typeof entry.leftoverTip === "string" && entry.leftoverTip.trim()
                 ? entry.leftoverTip.trim()
-                : "Save any extras for lunch or later in the week."
+                : "Save any extras for lunch or later in the week.",
+            leftoverSource:
+              typeof entry.leftoverSource === "string" && entry.leftoverSource.trim()
+                ? entry.leftoverSource.trim()
+                : undefined
           }))
       }
     : { days: [] };
+
+  const groceryExport = data.groceryExport && Array.isArray(data.groceryExport.sections)
+    ? {
+        sections: data.groceryExport.sections
+          .filter((section) => section && typeof section.category === "string")
+          .map((section) => ({
+            category: section.category.trim() || "Pantry",
+            items: Array.isArray(section.items)
+              ? section.items.filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
+              : []
+          }))
+          .filter((section) => section.items.length > 0)
+      }
+    : { sections: [] };
 
   return {
     meals,
@@ -212,7 +262,14 @@ function sanitizeMealResponse(data: MealResponse): MealResponse {
     staplesUsed: Array.isArray(data.staplesUsed)
       ? data.staplesUsed.filter((item): item is string => typeof item === "string")
       : [],
-    weeklyPlan
+    nutritionGoal:
+      data.nutritionGoal === "high-protein" ||
+      data.nutritionGoal === "lower-carb" ||
+      data.nutritionGoal === "budget-conscious"
+        ? data.nutritionGoal
+        : "balanced",
+    weeklyPlan,
+    groceryExport
   };
 }
 
@@ -248,12 +305,30 @@ function buildDemoMeal(
   };
 }
 
+function buildDemoGroceryExport(items: string[]) {
+  const groups = new Map<string, string[]>();
+
+  for (const item of items) {
+    const category = GROCERY_CATEGORY_MAP[item] ?? "Other";
+    const existing = groups.get(category) ?? [];
+    groups.set(category, [...existing, item]);
+  }
+
+  return {
+    sections: Array.from(groups.entries()).map(([category, groupedItems]) => ({
+      category,
+      items: groupedItems
+    }))
+  };
+}
+
 function generateDemoMeals(
   ingredients: string[],
   mode: PantryMode,
   filters: DietaryFilter[],
   servingSize: ServingSize,
-  staples: string[]
+  staples: string[],
+  nutritionGoal: NutritionGoal
 ): MealResponse {
   const primary = ingredients[0] ?? "pantry staples";
   const secondary = ingredients[1] ?? "whatever is in the fridge";
@@ -264,11 +339,19 @@ function generateDemoMeals(
   const timeSlow = mode === "lazy" ? "20 minutes" : "15 minutes";
   const filterText =
     filters.length > 0 ? ` tuned for ${filters.join(", ")}` : "";
+  const goalText =
+    nutritionGoal === "balanced"
+      ? "balanced week"
+      : nutritionGoal === "high-protein"
+        ? "higher-protein week"
+        : nutritionGoal === "lower-carb"
+          ? "lower-carb week"
+          : "budget-conscious week";
 
   const meals: MealSuggestion[] = [
     buildDemoMeal(
       `${titleCase(primary)} skillet toss`,
-      `A fast one-pan dinner${filterText} that leans on what you already have.`,
+      `A fast one-pan dinner${filterText} that leans on what you already have for a ${goalText}.`,
       ingredients,
       "Uses most ingredients",
       timeFast,
@@ -353,18 +436,30 @@ function generateDemoMeals(
         leftoverTip:
           index % 2 === 0
             ? "Cook a little extra so lunch is already handled tomorrow."
-            : "Repurpose any extra filling or grains later in the week."
+            : "Repurpose any extra filling or grains later in the week.",
+        leftoverSource:
+          index === 1
+            ? `Carry extra from Monday's ${meals[0].title} into Tuesday lunch bowls or wraps.`
+            : index === 3
+              ? `Save part of Wednesday's ${meals[2].title} to bulk up Thursday dinner.`
+              : index === 5
+                ? `Use leftover fillings from earlier in the week to keep the weekend lighter.`
+                : undefined
       };
     })
   };
 
+  const groceryList = Array.from(new Set(meals.flatMap((meal) => meal.missingIngredients))).slice(0, 8);
+
   return {
     meals,
-    groceryList: Array.from(new Set(meals.flatMap((meal) => meal.missingIngredients))).slice(0, 8),
+    groceryList,
     source: "demo",
     note: "Demo mode is active, so these meal ideas are generated locally instead of calling the OpenAI API.",
     staplesUsed: staples,
-    weeklyPlan
+    nutritionGoal,
+    weeklyPlan,
+    groceryExport: buildDemoGroceryExport(groceryList)
   };
 }
 
@@ -376,6 +471,7 @@ export async function POST(request: Request) {
     servingSize?: ServingSize;
     staples?: string[];
     includeWeeklyPlan?: boolean;
+    nutritionGoal?: NutritionGoal;
   };
 
   const ingredients = Array.isArray(body.ingredients)
@@ -401,6 +497,12 @@ export async function POST(request: Request) {
     ? body.staples.filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
     : [];
   const includeWeeklyPlan = body.includeWeeklyPlan === true;
+  const nutritionGoal =
+    body.nutritionGoal === "high-protein" ||
+    body.nutritionGoal === "lower-carb" ||
+    body.nutritionGoal === "budget-conscious"
+      ? body.nutritionGoal
+      : "balanced";
 
   try {
     if (ingredients.length === 0) {
@@ -412,7 +514,7 @@ export async function POST(request: Request) {
 
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
-        generateDemoMeals(ingredients, mode, filters, servingSize, staples)
+        generateDemoMeals(ingredients, mode, filters, servingSize, staples, nutritionGoal)
       );
     }
 
@@ -438,7 +540,8 @@ export async function POST(request: Request) {
             filters,
             servingSize,
             staples,
-            includeWeeklyPlan
+            includeWeeklyPlan,
+            nutritionGoal
           )
         }
       ],
@@ -467,7 +570,7 @@ export async function POST(request: Request) {
     if (status === 429 || status === 401 || status === 403) {
       if (ingredients.length > 0) {
         return NextResponse.json(
-          generateDemoMeals(ingredients, mode, filters, servingSize, staples)
+          generateDemoMeals(ingredients, mode, filters, servingSize, staples, nutritionGoal)
         );
       }
     }

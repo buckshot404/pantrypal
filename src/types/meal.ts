@@ -1,6 +1,7 @@
 export type PantryMode = "lazy" | "struggle";
 export type DietaryFilter = "vegetarian" | "dairy-free" | "gluten-free" | "high-protein";
 export type ServingSize = "1-2" | "3-4" | "5+";
+export type NutritionGoal = "balanced" | "high-protein" | "lower-carb" | "budget-conscious";
 export type WeeklyPlanDay =
   | "Monday"
   | "Tuesday"
@@ -28,6 +29,13 @@ export type MealResponse = {
   source?: "ai" | "demo";
   note?: string;
   staplesUsed?: string[];
+  nutritionGoal?: NutritionGoal;
+  groceryExport?: {
+    sections: Array<{
+      category: string;
+      items: string[];
+    }>;
+  };
   weeklyPlan?: {
     days: Array<{
       day: WeeklyPlanDay;
@@ -35,6 +43,7 @@ export type MealResponse = {
       mealSummary: string;
       prepFocus: string;
       leftoverTip: string;
+      leftoverSource?: string;
     }>;
   };
 };
