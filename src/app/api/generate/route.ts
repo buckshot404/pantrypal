@@ -69,6 +69,7 @@ Return JSON only with this shape:
       "fitLabel": "Uses most ingredients" | "Requires 1-2 extra items",
       "missingIngredients": ["string"],
       "steps": ["string"],
+      "finishTip": "string",
       "timeEstimate": "string",
       "pantryHighlights": ["string"],
       "servings": "1-2" | "3-4" | "5+"
@@ -94,8 +95,10 @@ Rules:
 - Recipes do not need to use every ingredient.
 - Favor meals that use the provided ingredients and need few extra items.
 - Keep each summary to one short sentence.
-- Keep each meal to 3 to 5 steps.
+- Keep each meal to 4 to 6 clear cooking instructions.
+- Each step should include a concrete action and a useful cue such as time, heat level, texture, or doneness.
 - Missing ingredients should be empty when not needed.
+- finishTip should be one short sentence with a serving, storage, or flavor tip.
 - Keep pantryHighlights to 1 to 3 provided ingredients worth calling out.
 - timeEstimate should be short, like "15 minutes" or "25 minutes".
 - servings must match the requested serving size bucket.
@@ -141,8 +144,12 @@ function sanitizeMealResponse(data: MealResponse): MealResponse {
             steps: Array.isArray(meal.steps)
               ? meal.steps
                   .filter((step): step is string => typeof step === "string" && Boolean(step.trim()))
-                  .slice(0, 5)
+                  .slice(0, 6)
               : [],
+            finishTip:
+              typeof meal.finishTip === "string" && meal.finishTip.trim()
+                ? meal.finishTip.trim()
+                : "Taste before serving and adjust salt, acid, or heat if needed.",
             timeEstimate:
               typeof meal.timeEstimate === "string" && meal.timeEstimate.trim()
                 ? meal.timeEstimate.trim()
@@ -158,7 +165,7 @@ function sanitizeMealResponse(data: MealResponse): MealResponse {
                 : "3-4"
           };
         })
-        .filter((meal) => meal.steps.length >= 3)
+        .filter((meal) => meal.steps.length >= 4)
     : [];
 
   const groceryList = Array.isArray(data.groceryList)
@@ -224,6 +231,7 @@ function buildDemoMeal(
   fitLabel: MealSuggestion["fitLabel"],
   timeEstimate: string,
   steps: string[],
+  finishTip: string,
   missingIngredients: string[],
   servings: ServingSize
 ): MealSuggestion {
@@ -233,6 +241,7 @@ function buildDemoMeal(
     fitLabel,
     missingIngredients,
     steps,
+    finishTip,
     timeEstimate,
     pantryHighlights: ingredients.slice(0, 3).map(titleCase),
     servings
@@ -264,11 +273,13 @@ function generateDemoMeals(
       "Uses most ingredients",
       timeFast,
       [
-        `Chop or tear the ${primary} and ${secondary} into bite-size pieces.`,
-        "Warm a skillet and add the ingredients that need the longest cook first.",
-        "Stir in the quicker pantry items and season to taste.",
-        "Cook until everything is hot, lightly crisped, and ready to serve."
+        `Chop or tear the ${primary} and ${secondary} into bite-size pieces so they cook evenly.`,
+        "Heat a skillet over medium heat, add a little oil, and start with the ingredient that needs the longest cook.",
+        `Stir in the remaining ingredients and cook for 3 to 5 minutes until everything is hot and lightly browned.`,
+        "Season with pantry basics and keep tossing until the edges look crisp and the center is steaming.",
+        "Serve right away while the skillet is still hot so the texture stays lively."
       ],
+      "A squeeze of acid or a sprinkle of herbs at the end will wake the whole pan up.",
       [],
       servingSize
     ),
@@ -279,11 +290,13 @@ function generateDemoMeals(
       "Requires 1-2 extra items",
       timeFast,
       [
-        `Warm the ${primary} with any cooked ingredients you have on hand.`,
-        `Add the ${secondary} and a quick sauce or seasoning if you have one.`,
-        "Pile everything into wraps, tortillas, or lettuce cups.",
-        "Fold and toast briefly if you want a little crunch."
+        `Warm the ${primary} in a skillet over medium heat until it is heated through and starting to brown.`,
+        `Add the ${secondary} plus any sauce or seasoning and stir for 2 minutes so the filling tastes cohesive.`,
+        "Warm wraps, tortillas, or lettuce cups separately so they are easy to fold without tearing.",
+        "Fill each wrap generously, then fold tightly and press seam-side down in the pan for 1 minute if you want crunch.",
+        "Slice and serve while warm so the filling stays melty or juicy."
       ],
+      "If the filling feels dry, add a spoonful of yogurt, salsa, or broth before wrapping.",
       extraTwo,
       servingSize
     ),
@@ -294,11 +307,13 @@ function generateDemoMeals(
       "Uses most ingredients",
       timeSlow,
       [
-        "Heat any grains, rice, or starch you already have prepared.",
-        `Cook or reheat the ${primary} and ${secondary} with a little oil or broth.`,
-        "Layer everything into bowls and add any crunchy or fresh topping available.",
-        "Season and serve while warm."
+        "Heat any grains, rice, or starch first so the base is ready when the toppings finish.",
+        `Cook or reheat the ${primary} and ${secondary} with a little oil or broth over medium heat until fully hot.`,
+        "Taste and season the mixture, then let it cook another minute so the flavors settle in.",
+        "Layer the warm base into bowls and spoon the cooked mixture over the top.",
+        "Finish with anything crunchy, creamy, or fresh to give the bowl contrast."
       ],
+      "This is a good place to use leftover herbs, greens, or a quick sauce from the fridge.",
       extraOne,
       servingSize
     ),
@@ -309,11 +324,13 @@ function generateDemoMeals(
       "Requires 1-2 extra items",
       mode === "lazy" ? "18 minutes" : "14 minutes",
       [
-        "Dice the heartiest ingredients small so they cook fast.",
-        "Brown everything in a skillet until the edges pick up color.",
-        "Add a splash of sauce, broth, or seasoning to bring it together.",
-        "Finish with an egg, herbs, or cheese if you have them."
+        "Dice the heartiest ingredients small so they soften fast and crisp at the edges.",
+        "Heat a skillet over medium-high heat and spread everything out so it browns instead of steaming.",
+        "Stir only occasionally for 5 to 7 minutes until the edges pick up deep color.",
+        "Add a splash of sauce, broth, or seasoning and toss until it coats the pan evenly.",
+        "Finish with an egg, herbs, or cheese if you have them and serve while everything is still sizzling."
       ],
+      "A little hot sauce or black pepper at the end makes this feel more intentional than improvised.",
       pickExtras(ingredientsAndStaples, 2),
       servingSize
     )

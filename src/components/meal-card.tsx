@@ -21,8 +21,10 @@ export function MealCard({ meal, isFavorite, onToggleFavorite }: MealCardProps) 
       `Servings: ${meal.servings}`,
       `Time: ${meal.timeEstimate}`,
       "",
-      "Steps:",
+      "Cooking instructions:",
       ...meal.steps.map((step, index) => `${index + 1}. ${step}`),
+      "",
+      `Finish tip: ${meal.finishTip}`,
       "",
       `Missing ingredients: ${meal.missingIngredients.join(", ") || "None"}`
     ].join("\n");
@@ -94,7 +96,7 @@ export function MealCard({ meal, isFavorite, onToggleFavorite }: MealCardProps) 
 
       <div className="mt-4 grid gap-4 sm:grid-cols-[1.1fr,0.9fr]">
         <div>
-          <p className="text-sm font-semibold text-ink">Quick steps</p>
+          <p className="text-sm font-semibold text-ink">Cooking instructions</p>
           <ol className="mt-2 space-y-2 text-sm leading-6 text-ink/75">
             {meal.steps.map((step, index) => (
               <li key={`${meal.title}-step-${index}`} className="flex gap-3">
@@ -108,7 +110,9 @@ export function MealCard({ meal, isFavorite, onToggleFavorite }: MealCardProps) 
         </div>
 
         <div className="rounded-[1.25rem] bg-oat p-4">
-          <p className="text-sm font-semibold text-ink">Missing ingredients</p>
+          <p className="text-sm font-semibold text-ink">Finish tip</p>
+          <p className="mt-2 text-sm leading-6 text-ink/75">{meal.finishTip}</p>
+          <p className="mt-4 text-sm font-semibold text-ink">Missing ingredients</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {meal.missingIngredients.length > 0 ? (
               meal.missingIngredients.map((item) => (

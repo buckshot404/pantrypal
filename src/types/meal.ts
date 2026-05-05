@@ -16,6 +16,7 @@ export type MealSuggestion = {
   fitLabel: "Uses most ingredients" | "Requires 1-2 extra items";
   missingIngredients: string[];
   steps: string[];
+  finishTip: string;
   timeEstimate: string;
   pantryHighlights: string[];
   servings: ServingSize;
