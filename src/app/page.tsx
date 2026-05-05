@@ -5,21 +5,39 @@ import { FavoritesSection } from "@/components/favorites-section";
 import { FilterSummary } from "@/components/filter-summary";
 import { HistoryList } from "@/components/history-list";
 import { IngredientForm } from "@/components/ingredient-form";
+import { PlanningSummary } from "@/components/planning-summary";
+import { PremiumBadge } from "@/components/premium-badge";
+import { PricingCards } from "@/components/pricing-cards";
 import { ResultsSection } from "@/components/results-section";
+import { UpgradeModal } from "@/components/upgrade-modal";
+import { WeeklyPlanner } from "@/components/weekly-planner";
 import {
   FAVORITES_STORAGE_KEY,
   HISTORY_STORAGE_KEY,
   MAX_HISTORY_ITEMS,
-  MODE_COPY
+  MODE_COPY,
+  PANTRY_STAPLES
 } from "@/lib/constants";
 import { formatIngredientInput, parseIngredients } from "@/lib/ingredients";
-import type { DietaryFilter, MealResponse, MealSuggestion, PantryMode } from "@/types/meal";
+import type {
+  DietaryFilter,
+  MealResponse,
+  MealSuggestion,
+  PantryMode,
+  ServingSize
+} from "@/types/meal";
 
 export default function HomePage() {
   const [input, setInput] = useState("");
   const [mode, setMode] = useState<PantryMode>("lazy");
   const [selectedFilters, setSelectedFilters] = useState<DietaryFilter[]>([]);
+  const [servingSize, setServingSize] = useState<ServingSize>("3-4");
+  const [selectedStaples, setSelectedStaples] = useState<string[]>(PANTRY_STAPLES.slice(0, 4));
   const [results, setResults] = useState<MealResponse | null>(null);
+  const [weeklyPlan, setWeeklyPlan] = useState<MealResponse["weeklyPlan"] | null>(null);
+  const [plusPreviewUnlocked, setPlusPreviewUnlocked] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [isWeeklyLoading, setIsWeeklyLoading] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<MealSuggestion[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -85,10 +103,20 @@ export default function HomePage() {
     });
   };
 
+  const toggleStaple = (staple: string) => {
+    setSelectedStaples((current) =>
+      current.includes(staple)
+        ? current.filter((item) => item !== staple)
+        : [...current, staple]
+    );
+  };
+
   const selectFavorite = (meal: MealSuggestion) => {
     setResults({
       meals: [meal],
-      groceryList: meal.missingIngredients
+      groceryList: meal.missingIngredients,
+      source: "demo",
+      staplesUsed: selectedStaples
     });
   };
 
@@ -113,7 +141,9 @@ export default function HomePage() {
         body: JSON.stringify({
           ingredients,
           mode,
-          filters: selectedFilters
+          filters: selectedFilters,
+          servingSize,
+          staples: selectedStaples
         })
       });
 
@@ -126,6 +156,7 @@ export default function HomePage() {
       }
 
       setResults(payload);
+      setWeeklyPlan(payload.weeklyPlan ?? null);
       setLastSubmittedInput(formatIngredientInput(ingredients));
       saveSearch(formatIngredientInput(ingredients));
     } catch (requestError) {
@@ -141,11 +172,67 @@ export default function HomePage() {
     }
   };
 
+  const generateWeeklyPlan = async () => {
+    const ingredients = parseIngredients(lastSubmittedInput || input);
+
+    if (ingredients.length === 0) {
+      setError("Add ingredients first so PantryPal Plus can build your week.");
+      return;
+    }
+
+    setError(null);
+    setIsWeeklyLoading(true);
+
+    try {
+      const response = await fetch("/api/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          ingredients,
+          mode,
+          filters: selectedFilters,
+          servingSize,
+          staples: selectedStaples,
+          includeWeeklyPlan: true
+        })
+      });
+
+      const payload = (await response.json()) as MealResponse & { error?: string };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Unable to generate a weekly plan right now.");
+      }
+
+      setWeeklyPlan(payload.weeklyPlan ?? null);
+      if (!results) {
+        setResults(payload);
+      }
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error
+          ? requestError.message
+          : "Something went wrong while planning your week.";
+      setError(message);
+    } finally {
+      setIsWeeklyLoading(false);
+    }
+  };
+
   const activeMealCount = results?.meals.length ?? 0;
   const groceryCount = results?.groceryList.length ?? 0;
 
   return (
     <main className="min-h-screen px-4 py-8 sm:px-6 lg:px-8">
+      <UpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        onUnlockPreview={() => {
+          setPlusPreviewUnlocked(true);
+          setIsUpgradeModalOpen(false);
+        }}
+      />
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <section className="overflow-hidden rounded-[2.2rem] border border-white/30 bg-ink px-5 py-6 text-white shadow-card sm:px-8 sm:py-8">
           <div className="grid gap-8 lg:grid-cols-[1.25fr,0.75fr]">
@@ -153,6 +240,9 @@ export default function HomePage() {
               <p className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-white/85">
                 PantryPal
               </p>
+              <div className="mt-3">
+                <PremiumBadge label="Plus weekly planning available" tone="dark" />
+              </div>
               <h1 className="font-display mt-4 text-balance text-4xl font-semibold leading-tight sm:text-6xl">
                 Use what you already have. Waste less. Eat sooner.
               </h1>
@@ -191,6 +281,20 @@ export default function HomePage() {
                 <p className="mt-3 text-3xl font-semibold">{groceryCount}</p>
                 <p className="mt-2 text-sm leading-6 text-white/72">Small add-ons shared across meals.</p>
               </div>
+              <div className="rounded-[1.5rem] border border-white/10 bg-white/10 p-4 backdrop-blur">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+                      Premium tier
+                    </p>
+                    <p className="mt-3 text-xl font-semibold">PantryPal Plus</p>
+                  </div>
+                  <PremiumBadge label="Upsell ready" tone="light" />
+                </div>
+                <p className="mt-2 text-sm leading-6 text-white/72">
+                  Weekly planning, prep pacing, and leftover strategy built as a paid upgrade.
+                </p>
+              </div>
             </div>
           </div>
         </section>
@@ -201,11 +305,15 @@ export default function HomePage() {
               input={input}
               mode={mode}
               selectedFilters={selectedFilters}
+              servingSize={servingSize}
+              selectedStaples={selectedStaples}
               isLoading={isLoading}
               error={error}
               onInputChange={setInput}
               onModeChange={setMode}
               onFilterToggle={toggleFilter}
+              onServingChange={setServingSize}
+              onStapleToggle={toggleStaple}
               onSubmit={() => generateMeals(input)}
               onRegenerate={() => generateMeals(lastSubmittedInput || input)}
               canRegenerate={Boolean(lastSubmittedInput || input)}
@@ -215,6 +323,7 @@ export default function HomePage() {
 
           <div className="space-y-4">
             <FilterSummary filters={selectedFilters} />
+            <PlanningSummary servingSize={servingSize} selectedStaples={selectedStaples} />
             {results?.source === "demo" ? (
               <div className="rounded-[1.5rem] border border-citrus/35 bg-citrus/20 p-4 shadow-card backdrop-blur">
                 <p className="text-sm font-semibold text-amber-950">Demo mode active</p>
@@ -238,6 +347,14 @@ export default function HomePage() {
               onSelect={selectFavorite}
               onRemove={toggleFavorite}
             />
+            <WeeklyPlanner
+              plan={weeklyPlan}
+              isUnlocked={plusPreviewUnlocked}
+              isLoading={isWeeklyLoading}
+              onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
+              onGenerate={generateWeeklyPlan}
+            />
+            <PricingCards onUpgradeClick={() => setIsUpgradeModalOpen(true)} />
             <div className="rounded-[1.5rem] border border-white/75 bg-white/80 p-5 shadow-card backdrop-blur">
               <p className="text-base font-semibold text-ink">Deployment ready</p>
               <p className="mt-2 text-sm leading-6 text-ink/65">

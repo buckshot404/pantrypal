@@ -1,4 +1,4 @@
-import type { DietaryFilter, PantryMode } from "@/types/meal";
+import type { DietaryFilter, PantryMode, ServingSize } from "@/types/meal";
 
 export const MODE_COPY: Record<
   PantryMode,
@@ -47,4 +47,39 @@ export const DIETARY_FILTERS: Array<{
     label: "High protein",
     description: "Lean toward filling meals with more protein."
   }
+];
+
+export const SERVING_SIZES: Array<{
+  id: ServingSize;
+  label: string;
+  description: string;
+}> = [
+  {
+    id: "1-2",
+    label: "1-2 servings",
+    description: "Best for solo meals or a quick lunch plus leftovers."
+  },
+  {
+    id: "3-4",
+    label: "3-4 servings",
+    description: "Great for a small household or a shared dinner."
+  },
+  {
+    id: "5+",
+    label: "5+ servings",
+    description: "More batch-friendly and better for meal prep."
+  }
+];
+
+export const PANTRY_STAPLES = [
+  "olive oil",
+  "salt",
+  "black pepper",
+  "garlic",
+  "onion",
+  "butter",
+  "eggs",
+  "soy sauce",
+  "broth",
+  "tomato sauce"
 ];

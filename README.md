@@ -17,6 +17,10 @@ Live demo: [pantrypal-nine.vercel.app](https://pantrypal-nine.vercel.app)
 - `Lazy Mode` for the fastest meal ideas
 - `Struggle Mode` for meals that work with very few ingredients
 - Dietary filters for `Vegetarian`, `Dairy-free`, `Gluten-free`, and `High protein`
+- Serving size planning and pantry staple assumptions
+- Premium-style weekly planner preview for PantryPal Plus
+- Reusable premium badge system for paid feature positioning
+- Fake checkout-style upgrade modal and free-vs-plus pricing cards for demos
 - 3 to 5 AI-generated meal cards
 - Labels for `Uses most ingredients` and `Requires 1-2 extra items`
 - Loading states and empty-input validation
@@ -129,6 +133,7 @@ The included [vercel.json](C:/Users/kgb19/OneDrive/Documents/New%20project/verce
 - The app stores recent ingredient searches in browser local storage.
 - The regenerate button reuses the last successful ingredient list and active filters.
 - Favorite meals and grocery checklist state are saved in local storage.
+- Meal cards can be copied for quick sharing or saving.
 - The API sanitizes the AI response before returning it to the UI.
 - If the OpenAI API key is missing or the API returns quota/auth errors, PantryPal switches to a local demo generator so presentations can continue.
 

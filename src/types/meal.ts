@@ -1,5 +1,14 @@
 export type PantryMode = "lazy" | "struggle";
 export type DietaryFilter = "vegetarian" | "dairy-free" | "gluten-free" | "high-protein";
+export type ServingSize = "1-2" | "3-4" | "5+";
+export type WeeklyPlanDay =
+  | "Monday"
+  | "Tuesday"
+  | "Wednesday"
+  | "Thursday"
+  | "Friday"
+  | "Saturday"
+  | "Sunday";
 
 export type MealSuggestion = {
   title: string;
@@ -9,6 +18,7 @@ export type MealSuggestion = {
   steps: string[];
   timeEstimate: string;
   pantryHighlights: string[];
+  servings: ServingSize;
 };
 
 export type MealResponse = {
@@ -16,4 +26,14 @@ export type MealResponse = {
   groceryList: string[];
   source?: "ai" | "demo";
   note?: string;
+  staplesUsed?: string[];
+  weeklyPlan?: {
+    days: Array<{
+      day: WeeklyPlanDay;
+      mealTitle: string;
+      mealSummary: string;
+      prepFocus: string;
+      leftoverTip: string;
+    }>;
+  };
 };

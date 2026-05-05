@@ -1,19 +1,23 @@
 "use client";
 
 import { FormEvent } from "react";
-import { DIETARY_FILTERS } from "@/lib/constants";
-import type { DietaryFilter, PantryMode } from "@/types/meal";
+import { DIETARY_FILTERS, PANTRY_STAPLES, SERVING_SIZES } from "@/lib/constants";
+import type { DietaryFilter, PantryMode, ServingSize } from "@/types/meal";
 import { ModeToggle } from "@/components/mode-toggle";
 
 type IngredientFormProps = {
   input: string;
   mode: PantryMode;
   selectedFilters: DietaryFilter[];
+  servingSize: ServingSize;
+  selectedStaples: string[];
   isLoading: boolean;
   error: string | null;
   onInputChange: (value: string) => void;
   onModeChange: (mode: PantryMode) => void;
   onFilterToggle: (filter: DietaryFilter) => void;
+  onServingChange: (serving: ServingSize) => void;
+  onStapleToggle: (staple: string) => void;
   onSubmit: () => void;
   onRegenerate: () => void;
   canRegenerate: boolean;
@@ -23,11 +27,15 @@ export function IngredientForm({
   input,
   mode,
   selectedFilters,
+  servingSize,
+  selectedStaples,
   isLoading,
   error,
   onInputChange,
   onModeChange,
   onFilterToggle,
+  onServingChange,
+  onStapleToggle,
   onSubmit,
   onRegenerate,
   canRegenerate
@@ -61,6 +69,36 @@ export function IngredientForm({
       <ModeToggle value={mode} onChange={onModeChange} />
 
       <div className="space-y-3">
+        <div>
+          <p className="text-sm font-semibold text-ink">Serving size</p>
+          <p className="text-sm text-ink/65">Give PantryPal the right scale for dinner planning.</p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {SERVING_SIZES.map((option) => {
+            const isActive = servingSize === option.id;
+
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => onServingChange(option.id)}
+                className={`rounded-[1.15rem] border px-4 py-3 text-left transition ${
+                  isActive
+                    ? "border-ink bg-ink text-white"
+                    : "border-ink/10 bg-oat text-ink hover:border-ink/35"
+                }`}
+              >
+                <p className="text-sm font-semibold">{option.label}</p>
+                <p className={`mt-1 text-xs leading-5 ${isActive ? "text-white/80" : "text-current/80"}`}>
+                  {option.description}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-ink">Dietary filters</p>
@@ -84,6 +122,33 @@ export function IngredientForm({
               >
                 <p className="text-sm font-semibold">{filter.label}</p>
                 <p className="mt-1 text-xs leading-5 text-current/80">{filter.description}</p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <p className="text-sm font-semibold text-ink">Pantry staples you already have</p>
+          <p className="text-sm text-ink/65">This keeps PantryPal from suggesting basics you always stock.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {PANTRY_STAPLES.map((staple) => {
+            const isActive = selectedStaples.includes(staple);
+
+            return (
+              <button
+                key={staple}
+                type="button"
+                onClick={() => onStapleToggle(staple)}
+                className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                  isActive
+                    ? "border-herb bg-herb/10 text-herb"
+                    : "border-ink/10 bg-white text-ink/70 hover:border-herb/35"
+                }`}
+              >
+                {staple}
               </button>
             );
           })}

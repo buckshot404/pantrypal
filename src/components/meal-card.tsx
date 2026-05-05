@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+import { PremiumBadge } from "@/components/premium-badge";
 import type { MealSuggestion } from "@/types/meal";
 
 type MealCardProps = {
@@ -7,7 +11,30 @@ type MealCardProps = {
 };
 
 export function MealCard({ meal, isFavorite, onToggleFavorite }: MealCardProps) {
+  const [copied, setCopied] = useState(false);
   const isMostlyUsingPantry = meal.fitLabel === "Uses most ingredients";
+
+  const handleCopy = async () => {
+    const recipeText = [
+      meal.title,
+      meal.summary,
+      `Servings: ${meal.servings}`,
+      `Time: ${meal.timeEstimate}`,
+      "",
+      "Steps:",
+      ...meal.steps.map((step, index) => `${index + 1}. ${step}`),
+      "",
+      `Missing ingredients: ${meal.missingIngredients.join(", ") || "None"}`
+    ].join("\n");
+
+    try {
+      await navigator.clipboard.writeText(recipeText);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  };
 
   return (
     <article className="rounded-[1.5rem] border border-white/80 bg-white p-5 shadow-card">
@@ -26,6 +53,7 @@ export function MealCard({ meal, isFavorite, onToggleFavorite }: MealCardProps) 
           >
             {meal.fitLabel}
           </span>
+          <PremiumBadge label="Copyable recipe" tone="light" />
           <button
             type="button"
             onClick={() => onToggleFavorite(meal)}
@@ -37,12 +65,22 @@ export function MealCard({ meal, isFavorite, onToggleFavorite }: MealCardProps) 
           >
             {isFavorite ? "Saved" : "Save"}
           </button>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="rounded-full border border-ink/10 bg-white px-3 py-1 text-xs font-semibold text-ink/70 transition hover:bg-ink/5"
+          >
+            {copied ? "Copied" : "Copy"}
+          </button>
         </div>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
         <span className="rounded-full bg-ink px-3 py-1 text-xs font-semibold text-white">
           {meal.timeEstimate}
+        </span>
+        <span className="rounded-full bg-oat px-3 py-1 text-xs font-semibold text-ink">
+          {meal.servings} servings
         </span>
         {meal.pantryHighlights.map((item) => (
           <span
