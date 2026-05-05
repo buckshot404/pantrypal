@@ -92,7 +92,9 @@ function buildPrompt(
   const modeInstruction =
     mode === "lazy"
       ? "Prioritize the fastest, easiest meals with minimal prep and very short instructions."
-      : "Prioritize meals that can work with very few ingredients and still feel realistic.";
+      : mode === "struggle"
+        ? "Prioritize meals that can work with very few ingredients and still feel realistic."
+        : "Prioritize warm, cozy, satisfying meal ideas that feel comforting but still realistic for a home cook.";
   const filterInstruction =
     filters.length > 0
       ? `Respect these dietary filters: ${filters.join(", ")}.`
@@ -389,8 +391,8 @@ function generateDemoMeals(
   const ingredientsAndStaples = Array.from(new Set([...ingredients, ...staples]));
   const extraOne = pickExtras(ingredientsAndStaples, 1);
   const extraTwo = pickExtras(ingredientsAndStaples, 2);
-  const timeFast = mode === "lazy" ? "15 minutes" : "12 minutes";
-  const timeSlow = mode === "lazy" ? "20 minutes" : "15 minutes";
+  const timeFast = mode === "lazy" ? "15 minutes" : mode === "comfort" ? "22 minutes" : "12 minutes";
+  const timeSlow = mode === "lazy" ? "20 minutes" : mode === "comfort" ? "28 minutes" : "15 minutes";
   const filterText =
     filters.length > 0 ? ` tuned for ${filters.join(", ")}` : "";
   const goalText =
@@ -402,11 +404,13 @@ function generateDemoMeals(
           ? "lower-carb week"
           : "budget-conscious week";
   const rescueTitle = rescueMode ? "rescue" : "week";
+  const comfortText =
+    mode === "comfort" ? " with a cozy, comforting angle" : "";
 
   const meals: MealSuggestion[] = [
     buildDemoMeal(
       `${titleCase(primary)} ${rescueMode ? "rescue skillet" : "skillet toss"}`,
-      `A fast one-pan ${rescueTitle}${filterText} that leans on what you already have for a ${goalText}.`,
+      `A fast one-pan ${rescueTitle}${filterText}${comfortText} that leans on what you already have for a ${goalText}.`,
       ingredients,
       "Uses most ingredients",
       timeFast,
@@ -422,8 +426,8 @@ function generateDemoMeals(
       servingSize
     ),
     buildDemoMeal(
-      `${rescueMode ? "Emergency" : "Loaded"} ${titleCase(primary)} wraps`,
-      `A flexible wrap-style meal that turns leftovers into something that feels planned.`,
+      `${rescueMode ? "Emergency" : mode === "comfort" ? "Toasty" : "Loaded"} ${titleCase(primary)} wraps`,
+      `A flexible wrap-style meal that turns leftovers into something that feels planned${mode === "comfort" ? " and a little more cozy" : ""}.`,
       ingredients,
       "Requires 1-2 extra items",
       timeFast,
@@ -440,7 +444,7 @@ function generateDemoMeals(
     ),
     buildDemoMeal(
       `${titleCase(primary)} ${rescueMode ? "pantry bowl" : "rice bowl"}`,
-      `A practical bowl meal that uses your pantry base and one simple finishing touch.`,
+      `A practical bowl meal that uses your pantry base and one simple finishing touch${mode === "comfort" ? " with a softer, warmer feel" : ""}.`,
       ingredients,
       "Uses most ingredients",
       timeSlow,
@@ -456,8 +460,8 @@ function generateDemoMeals(
       servingSize
     ),
     buildDemoMeal(
-      `${rescueMode ? "Bare-bones" : "Pantry"} hash with ${titleCase(primary)}`,
-      `A low-effort clean-out-the-fridge option that still feels like a real meal.`,
+      `${rescueMode ? "Bare-bones" : mode === "comfort" ? "Skillet comfort" : "Pantry"} hash with ${titleCase(primary)}`,
+      `A low-effort clean-out-the-fridge option that still feels like a real meal${mode === "comfort" ? " you would actually look forward to" : ""}.`,
       ingredients,
       "Requires 1-2 extra items",
       mode === "lazy" ? "18 minutes" : "14 minutes",
@@ -539,7 +543,10 @@ export async function POST(request: Request) {
       )
     : [];
 
-  const mode = body.mode === "struggle" ? "struggle" : "lazy";
+  const mode =
+    body.mode === "struggle" || body.mode === "comfort"
+      ? body.mode
+      : "lazy";
   const filters = Array.isArray(body.filters)
     ? body.filters.filter(
         (filter): filter is DietaryFilter =>

@@ -11,8 +11,8 @@ type ModeToggleProps = {
 export function ModeToggle({ value, onChange }: ModeToggleProps) {
   return (
     <div className="rounded-[1.4rem] border border-white/70 bg-white/75 p-2 shadow-card backdrop-blur">
-      <div className="grid grid-cols-2 gap-2">
-        {(["lazy", "struggle"] as PantryMode[]).map((mode) => {
+      <div className="grid gap-2 sm:grid-cols-3">
+        {(["lazy", "struggle", "comfort"] as PantryMode[]).map((mode) => {
           const isActive = value === mode;
 
           return (

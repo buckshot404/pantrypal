@@ -14,6 +14,10 @@ export const MODE_COPY: Record<
   struggle: {
     name: "Struggle Mode",
     description: "Simple meals that work with a very short ingredient list."
+  },
+  comfort: {
+    name: "Comfort Mode",
+    description: "Warmer, cozier meal ideas that still stay realistic and easy enough."
   }
 };
 

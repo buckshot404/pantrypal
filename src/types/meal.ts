@@ -1,4 +1,4 @@
-export type PantryMode = "lazy" | "struggle";
+export type PantryMode = "lazy" | "struggle" | "comfort";
 export type DietaryFilter = "vegetarian" | "dairy-free" | "gluten-free" | "high-protein";
 export type ServingSize = "1-2" | "3-4" | "5+";
 export type NutritionGoal = "balanced" | "high-protein" | "lower-carb" | "budget-conscious";
