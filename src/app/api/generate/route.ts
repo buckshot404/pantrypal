@@ -55,6 +55,29 @@ const GROCERY_CATEGORY_MAP: Record<string, string> = {
   salt: "Pantry"
 };
 
+function buildSubstitutions(ingredients: string[]) {
+  const substitutions: Record<string, string> = {
+    rice: "swap with quinoa or couscous if that is what you have",
+    pasta: "swap with rice or noodles for the same meal base",
+    tortillas: "swap with bread or lettuce cups",
+    yogurt: "swap with sour cream or mayo in a pinch",
+    spinach: "swap with kale or lettuce",
+    cheese: "swap with yogurt sauce or avocado for creaminess",
+    beans: "swap with lentils or chickpeas",
+    chicken: "swap with turkey or tofu",
+    eggs: "swap with tofu scramble or extra beans",
+    "tomato sauce": "swap with salsa or crushed tomatoes"
+  };
+
+  return ingredients
+    .filter((item) => substitutions[item])
+    .slice(0, 3)
+    .map((item) => ({
+      original: item,
+      swap: substitutions[item]
+    }));
+}
+
 function buildPrompt(
   ingredients: string[],
   mode: PantryMode,
@@ -62,7 +85,9 @@ function buildPrompt(
   servingSize: ServingSize,
   staples: string[],
   includeWeeklyPlan: boolean,
-  nutritionGoal: NutritionGoal
+  nutritionGoal: NutritionGoal,
+  useFirstIngredients: string[],
+  rescueMode: boolean
 ) {
   const modeInstruction =
     mode === "lazy"
@@ -77,6 +102,13 @@ function buildPrompt(
       ? `Assume the user already has these pantry staples: ${staples.join(", ")}.`
       : "Do not assume any pantry staples beyond the provided ingredients.";
   const nutritionInstruction = `Optimize premium planning for this nutrition goal: ${nutritionGoal}.`;
+  const useFirstInstruction =
+    useFirstIngredients.length > 0
+      ? `Prioritize these ingredients before anything else: ${useFirstIngredients.join(", ")}.`
+      : "No special use-first ingredients are selected.";
+  const rescueInstruction = rescueMode
+    ? "Empty-fridge rescue mode is on. Favor ultra-flexible, forgiving meals that work with one or two core ingredients and common pantry basics."
+    : "Empty-fridge rescue mode is off.";
 
   return `
 You are PantryPal, a practical home-cooking assistant.
@@ -89,6 +121,7 @@ Return JSON only with this shape:
       "summary": "string",
       "fitLabel": "Uses most ingredients" | "Requires 1-2 extra items",
       "missingIngredients": ["string"],
+      "substitutions": [{"original": "string", "swap": "string"}],
       "steps": ["string"],
       "finishTip": "string",
       "timeEstimate": "string",
@@ -129,6 +162,7 @@ Rules:
 - Each step should include a concrete action and a useful cue such as time, heat level, texture, or doneness.
 - Missing ingredients should be empty when not needed.
 - finishTip should be one short sentence with a serving, storage, or flavor tip.
+- substitutions should include 0 to 3 realistic simple swaps when helpful.
 - Keep pantryHighlights to 1 to 3 provided ingredients worth calling out.
 - timeEstimate should be short, like "15 minutes" or "25 minutes".
 - servings must match the requested serving size bucket.
@@ -144,6 +178,8 @@ Rules:
 - ${filterInstruction}
 - ${stapleInstruction}
 - ${nutritionInstruction}
+- ${useFirstInstruction}
+- ${rescueInstruction}
 
 Requested serving size:
 ${servingSize}
@@ -171,6 +207,17 @@ function sanitizeMealResponse(data: MealResponse): MealResponse {
             missingIngredients: Array.isArray(meal.missingIngredients)
               ? meal.missingIngredients
                   .filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
+                  .slice(0, 3)
+              : [],
+            substitutions: Array.isArray(meal.substitutions)
+              ? meal.substitutions
+                  .filter(
+                    (item): item is { original: string; swap: string } =>
+                      typeof item === "object" &&
+                      item !== null &&
+                      typeof item.original === "string" &&
+                      typeof item.swap === "string"
+                  )
                   .slice(0, 3)
               : [],
             steps: Array.isArray(meal.steps)
@@ -262,6 +309,10 @@ function sanitizeMealResponse(data: MealResponse): MealResponse {
     staplesUsed: Array.isArray(data.staplesUsed)
       ? data.staplesUsed.filter((item): item is string => typeof item === "string")
       : [],
+    useFirstIngredients: Array.isArray(data.useFirstIngredients)
+      ? data.useFirstIngredients.filter((item): item is string => typeof item === "string")
+      : [],
+    rescueMode: data.rescueMode === true,
     nutritionGoal:
       data.nutritionGoal === "high-protein" ||
       data.nutritionGoal === "lower-carb" ||
@@ -297,6 +348,7 @@ function buildDemoMeal(
     summary,
     fitLabel,
     missingIngredients,
+    substitutions: buildSubstitutions(ingredients),
     steps,
     finishTip,
     timeEstimate,
@@ -328,10 +380,12 @@ function generateDemoMeals(
   filters: DietaryFilter[],
   servingSize: ServingSize,
   staples: string[],
-  nutritionGoal: NutritionGoal
+  nutritionGoal: NutritionGoal,
+  useFirstIngredients: string[],
+  rescueMode: boolean
 ): MealResponse {
-  const primary = ingredients[0] ?? "pantry staples";
-  const secondary = ingredients[1] ?? "whatever is in the fridge";
+  const primary = useFirstIngredients[0] ?? ingredients[0] ?? "pantry staples";
+  const secondary = useFirstIngredients[1] ?? ingredients[1] ?? "whatever is in the fridge";
   const ingredientsAndStaples = Array.from(new Set([...ingredients, ...staples]));
   const extraOne = pickExtras(ingredientsAndStaples, 1);
   const extraTwo = pickExtras(ingredientsAndStaples, 2);
@@ -347,11 +401,12 @@ function generateDemoMeals(
         : nutritionGoal === "lower-carb"
           ? "lower-carb week"
           : "budget-conscious week";
+  const rescueTitle = rescueMode ? "rescue" : "week";
 
   const meals: MealSuggestion[] = [
     buildDemoMeal(
-      `${titleCase(primary)} skillet toss`,
-      `A fast one-pan dinner${filterText} that leans on what you already have for a ${goalText}.`,
+      `${titleCase(primary)} ${rescueMode ? "rescue skillet" : "skillet toss"}`,
+      `A fast one-pan ${rescueTitle}${filterText} that leans on what you already have for a ${goalText}.`,
       ingredients,
       "Uses most ingredients",
       timeFast,
@@ -367,7 +422,7 @@ function generateDemoMeals(
       servingSize
     ),
     buildDemoMeal(
-      `Loaded ${titleCase(primary)} wraps`,
+      `${rescueMode ? "Emergency" : "Loaded"} ${titleCase(primary)} wraps`,
       `A flexible wrap-style meal that turns leftovers into something that feels planned.`,
       ingredients,
       "Requires 1-2 extra items",
@@ -384,7 +439,7 @@ function generateDemoMeals(
       servingSize
     ),
     buildDemoMeal(
-      `${titleCase(primary)} rice bowl`,
+      `${titleCase(primary)} ${rescueMode ? "pantry bowl" : "rice bowl"}`,
       `A practical bowl meal that uses your pantry base and one simple finishing touch.`,
       ingredients,
       "Uses most ingredients",
@@ -401,7 +456,7 @@ function generateDemoMeals(
       servingSize
     ),
     buildDemoMeal(
-      `Pantry hash with ${titleCase(primary)}`,
+      `${rescueMode ? "Bare-bones" : "Pantry"} hash with ${titleCase(primary)}`,
       `A low-effort clean-out-the-fridge option that still feels like a real meal.`,
       ingredients,
       "Requires 1-2 extra items",
@@ -457,6 +512,8 @@ function generateDemoMeals(
     source: "demo",
     note: "Demo mode is active, so these meal ideas are generated locally instead of calling the OpenAI API.",
     staplesUsed: staples,
+    useFirstIngredients,
+    rescueMode,
     nutritionGoal,
     weeklyPlan,
     groceryExport: buildDemoGroceryExport(groceryList)
@@ -472,6 +529,8 @@ export async function POST(request: Request) {
     staples?: string[];
     includeWeeklyPlan?: boolean;
     nutritionGoal?: NutritionGoal;
+    useFirstIngredients?: string[];
+    rescueMode?: boolean;
   };
 
   const ingredients = Array.isArray(body.ingredients)
@@ -497,6 +556,12 @@ export async function POST(request: Request) {
     ? body.staples.filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
     : [];
   const includeWeeklyPlan = body.includeWeeklyPlan === true;
+  const useFirstIngredients = Array.isArray(body.useFirstIngredients)
+    ? body.useFirstIngredients.filter(
+        (item): item is string => typeof item === "string" && Boolean(item.trim())
+      )
+    : [];
+  const rescueMode = body.rescueMode === true;
   const nutritionGoal =
     body.nutritionGoal === "high-protein" ||
     body.nutritionGoal === "lower-carb" ||
@@ -514,7 +579,16 @@ export async function POST(request: Request) {
 
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
-        generateDemoMeals(ingredients, mode, filters, servingSize, staples, nutritionGoal)
+        generateDemoMeals(
+          ingredients,
+          mode,
+          filters,
+          servingSize,
+          staples,
+          nutritionGoal,
+          useFirstIngredients,
+          rescueMode
+        )
       );
     }
 
@@ -541,7 +615,9 @@ export async function POST(request: Request) {
             servingSize,
             staples,
             includeWeeklyPlan,
-            nutritionGoal
+            nutritionGoal,
+            useFirstIngredients,
+            rescueMode
           )
         }
       ],
@@ -570,7 +646,16 @@ export async function POST(request: Request) {
     if (status === 429 || status === 401 || status === 403) {
       if (ingredients.length > 0) {
         return NextResponse.json(
-          generateDemoMeals(ingredients, mode, filters, servingSize, staples, nutritionGoal)
+          generateDemoMeals(
+            ingredients,
+            mode,
+            filters,
+            servingSize,
+            staples,
+            nutritionGoal,
+            useFirstIngredients,
+            rescueMode
+          )
         );
       }
     }

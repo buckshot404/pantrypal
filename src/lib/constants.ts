@@ -84,6 +84,19 @@ export const PANTRY_STAPLES = [
   "tomato sauce"
 ];
 
+export const COMMON_SUBSTITUTIONS: Record<string, string> = {
+  rice: "quinoa or couscous",
+  pasta: "rice or noodles",
+  tortillas: "bread or lettuce cups",
+  yogurt: "sour cream or mayo",
+  spinach: "kale or lettuce",
+  cheese: "yogurt sauce or avocado",
+  beans: "lentils or chickpeas",
+  chicken: "turkey or tofu",
+  eggs: "scrambled tofu or extra beans",
+  "tomato sauce": "salsa or crushed tomatoes"
+};
+
 export const NUTRITION_GOALS: Array<{
   id: NutritionGoal;
   label: string;

@@ -25,6 +25,9 @@ export function MealCard({ meal, isFavorite, onToggleFavorite }: MealCardProps) 
       ...meal.steps.map((step, index) => `${index + 1}. ${step}`),
       "",
       `Finish tip: ${meal.finishTip}`,
+      ...(meal.substitutions.length > 0
+        ? ["", "Substitutions:", ...meal.substitutions.map((item) => `- ${item.original}: ${item.swap}`)]
+        : []),
       "",
       `Missing ingredients: ${meal.missingIngredients.join(", ") || "None"}`
     ].join("\n");
@@ -112,6 +115,18 @@ export function MealCard({ meal, isFavorite, onToggleFavorite }: MealCardProps) 
         <div className="rounded-[1.25rem] bg-oat p-4">
           <p className="text-sm font-semibold text-ink">Finish tip</p>
           <p className="mt-2 text-sm leading-6 text-ink/75">{meal.finishTip}</p>
+          {meal.substitutions.length > 0 ? (
+            <>
+              <p className="mt-4 text-sm font-semibold text-ink">Substitutions</p>
+              <div className="mt-2 space-y-2">
+                {meal.substitutions.map((item) => (
+                  <p key={`${meal.title}-${item.original}`} className="text-sm leading-6 text-ink/75">
+                    <span className="font-semibold text-ink">{item.original}</span>: {item.swap}
+                  </p>
+                ))}
+              </div>
+            </>
+          ) : null}
           <p className="mt-4 text-sm font-semibold text-ink">Missing ingredients</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {meal.missingIngredients.length > 0 ? (

@@ -36,6 +36,8 @@ export default function HomePage() {
   const [servingSize, setServingSize] = useState<ServingSize>("3-4");
   const [nutritionGoal, setNutritionGoal] = useState<NutritionGoal>("balanced");
   const [selectedStaples, setSelectedStaples] = useState<string[]>(PANTRY_STAPLES.slice(0, 4));
+  const [useFirstIngredients, setUseFirstIngredients] = useState<string[]>([]);
+  const [rescueMode, setRescueMode] = useState(false);
   const [results, setResults] = useState<MealResponse | null>(null);
   const [weeklyPlan, setWeeklyPlan] = useState<MealResponse["weeklyPlan"] | null>(null);
   const [plusPreviewUnlocked, setPlusPreviewUnlocked] = useState(false);
@@ -114,12 +116,22 @@ export default function HomePage() {
     );
   };
 
+  const toggleUseFirstIngredient = (ingredient: string) => {
+    setUseFirstIngredients((current) =>
+      current.includes(ingredient)
+        ? current.filter((item) => item !== ingredient)
+        : [...current, ingredient]
+    );
+  };
+
   const selectFavorite = (meal: MealSuggestion) => {
     setResults({
       meals: [meal],
       groceryList: meal.missingIngredients,
       source: "demo",
-      staplesUsed: selectedStaples
+      staplesUsed: selectedStaples,
+      useFirstIngredients,
+      rescueMode
     });
   };
 
@@ -134,6 +146,7 @@ export default function HomePage() {
 
     setError(null);
     setIsLoading(true);
+    const validUseFirstIngredients = useFirstIngredients.filter((item) => ingredients.includes(item));
 
     try {
       const response = await fetch("/api/generate", {
@@ -147,7 +160,9 @@ export default function HomePage() {
           filters: selectedFilters,
           servingSize,
           nutritionGoal,
-          staples: selectedStaples
+          staples: selectedStaples,
+          useFirstIngredients: validUseFirstIngredients,
+          rescueMode
         })
       });
 
@@ -186,6 +201,7 @@ export default function HomePage() {
 
     setError(null);
     setIsWeeklyLoading(true);
+    const validUseFirstIngredients = useFirstIngredients.filter((item) => ingredients.includes(item));
 
     try {
       const response = await fetch("/api/generate", {
@@ -200,7 +216,9 @@ export default function HomePage() {
           servingSize,
           nutritionGoal,
           staples: selectedStaples,
-          includeWeeklyPlan: true
+          includeWeeklyPlan: true,
+          useFirstIngredients: validUseFirstIngredients,
+          rescueMode
         })
       });
 
@@ -313,6 +331,8 @@ export default function HomePage() {
               servingSize={servingSize}
               nutritionGoal={nutritionGoal}
               selectedStaples={selectedStaples}
+              useFirstIngredients={useFirstIngredients}
+              rescueMode={rescueMode}
               isLoading={isLoading}
               error={error}
               onInputChange={setInput}
@@ -321,6 +341,8 @@ export default function HomePage() {
               onServingChange={setServingSize}
               onNutritionGoalChange={setNutritionGoal}
               onStapleToggle={toggleStaple}
+              onUseFirstToggle={toggleUseFirstIngredient}
+              onRescueModeChange={setRescueMode}
               onSubmit={() => generateMeals(input)}
               onRegenerate={() => generateMeals(lastSubmittedInput || input)}
               canRegenerate={Boolean(lastSubmittedInput || input)}

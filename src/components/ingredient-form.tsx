@@ -2,6 +2,7 @@
 
 import { FormEvent } from "react";
 import {
+  COMMON_SUBSTITUTIONS,
   DIETARY_FILTERS,
   NUTRITION_GOALS,
   PANTRY_STAPLES,
@@ -22,6 +23,8 @@ type IngredientFormProps = {
   servingSize: ServingSize;
   nutritionGoal: NutritionGoal;
   selectedStaples: string[];
+  useFirstIngredients: string[];
+  rescueMode: boolean;
   isLoading: boolean;
   error: string | null;
   onInputChange: (value: string) => void;
@@ -30,6 +33,8 @@ type IngredientFormProps = {
   onServingChange: (serving: ServingSize) => void;
   onNutritionGoalChange: (goal: NutritionGoal) => void;
   onStapleToggle: (staple: string) => void;
+  onUseFirstToggle: (ingredient: string) => void;
+  onRescueModeChange: (value: boolean) => void;
   onSubmit: () => void;
   onRegenerate: () => void;
   canRegenerate: boolean;
@@ -42,6 +47,8 @@ export function IngredientForm({
   servingSize,
   nutritionGoal,
   selectedStaples,
+  useFirstIngredients,
+  rescueMode,
   isLoading,
   error,
   onInputChange,
@@ -50,6 +57,8 @@ export function IngredientForm({
   onServingChange,
   onNutritionGoalChange,
   onStapleToggle,
+  onUseFirstToggle,
+  onRescueModeChange,
   onSubmit,
   onRegenerate,
   canRegenerate
@@ -58,6 +67,12 @@ export function IngredientForm({
     event.preventDefault();
     onSubmit();
   };
+
+  const ingredientOptions = input
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean)
+    .filter((item, index, values) => values.indexOf(item) === index);
 
   return (
     <form
@@ -80,7 +95,57 @@ export function IngredientForm({
         </p>
       </div>
 
+      {ingredientOptions.length > 0 ? (
+        <div className="space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-ink">Use these first</p>
+            <p className="text-sm text-ink/65">Mark ingredients you want PantryPal to prioritize before they go bad.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {ingredientOptions.map((ingredient) => {
+              const isActive = useFirstIngredients.includes(ingredient);
+
+              return (
+                <button
+                  key={ingredient}
+                  type="button"
+                  onClick={() => onUseFirstToggle(ingredient)}
+                  className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                    isActive
+                      ? "border-coral/30 bg-coral/10 text-coral"
+                      : "border-ink/10 bg-white text-ink/70 hover:border-coral/30"
+                  }`}
+                >
+                  {ingredient}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
       <ModeToggle value={mode} onChange={onModeChange} />
+
+      <div className="rounded-[1.2rem] border border-ink/10 bg-oat p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-ink">Empty-fridge rescue mode</p>
+            <p className="mt-1 text-sm leading-6 text-ink/65">
+              Push PantryPal toward ultra-flexible meals for nights when you only have one or two real ingredients.
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-pressed={rescueMode}
+            onClick={() => onRescueModeChange(!rescueMode)}
+            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+              rescueMode ? "bg-coral text-white" : "bg-white text-ink border border-ink/10"
+            }`}
+          >
+            {rescueMode ? "On" : "Off"}
+          </button>
+        </div>
+      </div>
 
       <div className="space-y-3">
         <div>
@@ -196,6 +261,22 @@ export function IngredientForm({
           })}
         </div>
       </div>
+
+      {ingredientOptions.some((item) => COMMON_SUBSTITUTIONS[item]) ? (
+        <div className="space-y-2 rounded-[1.2rem] border border-ink/10 bg-white p-4">
+          <p className="text-sm font-semibold text-ink">Quick substitution ideas</p>
+          <div className="space-y-2 text-sm leading-6 text-ink/70">
+            {ingredientOptions
+              .filter((item) => COMMON_SUBSTITUTIONS[item])
+              .slice(0, 3)
+              .map((item) => (
+                <p key={item}>
+                  <span className="font-semibold text-ink">{item}</span>: swap with {COMMON_SUBSTITUTIONS[item]}
+                </p>
+              ))}
+          </div>
+        </div>
+      ) : null}
 
       {error ? (
         <div className="rounded-2xl border border-coral/20 bg-coral/10 px-4 py-3 text-sm text-coral">

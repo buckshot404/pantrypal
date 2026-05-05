@@ -16,6 +16,10 @@ export type MealSuggestion = {
   summary: string;
   fitLabel: "Uses most ingredients" | "Requires 1-2 extra items";
   missingIngredients: string[];
+  substitutions: Array<{
+    original: string;
+    swap: string;
+  }>;
   steps: string[];
   finishTip: string;
   timeEstimate: string;
@@ -29,6 +33,8 @@ export type MealResponse = {
   source?: "ai" | "demo";
   note?: string;
   staplesUsed?: string[];
+  useFirstIngredients?: string[];
+  rescueMode?: boolean;
   nutritionGoal?: NutritionGoal;
   groceryExport?: {
     sections: Array<{
