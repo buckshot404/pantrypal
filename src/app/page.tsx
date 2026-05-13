@@ -21,6 +21,7 @@ import {
 } from "@/lib/constants";
 import { formatIngredientInput, parseIngredients } from "@/lib/ingredients";
 import type {
+  Allergy,
   DietaryFilter,
   MealResponse,
   MealSuggestion,
@@ -33,6 +34,7 @@ export default function HomePage() {
   const [input, setInput] = useState("");
   const [mode, setMode] = useState<PantryMode>("lazy");
   const [selectedFilters, setSelectedFilters] = useState<DietaryFilter[]>([]);
+  const [selectedAllergies, setSelectedAllergies] = useState<Allergy[]>([]);
   const [servingSize, setServingSize] = useState<ServingSize>("3-4");
   const [nutritionGoal, setNutritionGoal] = useState<NutritionGoal>("balanced");
   const [selectedStaples, setSelectedStaples] = useState<string[]>(PANTRY_STAPLES.slice(0, 4));
@@ -108,6 +110,14 @@ export default function HomePage() {
     });
   };
 
+  const toggleAllergy = (allergy: Allergy) => {
+    setSelectedAllergies((current) =>
+      current.includes(allergy)
+        ? current.filter((item) => item !== allergy)
+        : [...current, allergy]
+    );
+  };
+
   const toggleStaple = (staple: string) => {
     setSelectedStaples((current) =>
       current.includes(staple)
@@ -158,6 +168,7 @@ export default function HomePage() {
           ingredients,
           mode,
           filters: selectedFilters,
+          allergies: selectedAllergies,
           servingSize,
           nutritionGoal,
           staples: selectedStaples,
@@ -213,6 +224,7 @@ export default function HomePage() {
           ingredients,
           mode,
           filters: selectedFilters,
+          allergies: selectedAllergies,
           servingSize,
           nutritionGoal,
           staples: selectedStaples,
@@ -328,6 +340,7 @@ export default function HomePage() {
               input={input}
               mode={mode}
               selectedFilters={selectedFilters}
+              selectedAllergies={selectedAllergies}
               servingSize={servingSize}
               nutritionGoal={nutritionGoal}
               selectedStaples={selectedStaples}
@@ -338,6 +351,7 @@ export default function HomePage() {
               onInputChange={setInput}
               onModeChange={setMode}
               onFilterToggle={toggleFilter}
+              onAllergyToggle={toggleAllergy}
               onServingChange={setServingSize}
               onNutritionGoalChange={setNutritionGoal}
               onStapleToggle={toggleStaple}

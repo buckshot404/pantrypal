@@ -2,6 +2,7 @@
 
 import { FormEvent } from "react";
 import {
+  ALLERGY_OPTIONS,
   COMMON_SUBSTITUTIONS,
   DIETARY_FILTERS,
   NUTRITION_GOALS,
@@ -9,6 +10,7 @@ import {
   SERVING_SIZES
 } from "@/lib/constants";
 import type {
+  Allergy,
   DietaryFilter,
   NutritionGoal,
   PantryMode,
@@ -20,6 +22,7 @@ type IngredientFormProps = {
   input: string;
   mode: PantryMode;
   selectedFilters: DietaryFilter[];
+  selectedAllergies: Allergy[];
   servingSize: ServingSize;
   nutritionGoal: NutritionGoal;
   selectedStaples: string[];
@@ -30,6 +33,7 @@ type IngredientFormProps = {
   onInputChange: (value: string) => void;
   onModeChange: (mode: PantryMode) => void;
   onFilterToggle: (filter: DietaryFilter) => void;
+  onAllergyToggle: (allergy: Allergy) => void;
   onServingChange: (serving: ServingSize) => void;
   onNutritionGoalChange: (goal: NutritionGoal) => void;
   onStapleToggle: (staple: string) => void;
@@ -44,6 +48,7 @@ export function IngredientForm({
   input,
   mode,
   selectedFilters,
+  selectedAllergies,
   servingSize,
   nutritionGoal,
   selectedStaples,
@@ -54,6 +59,7 @@ export function IngredientForm({
   onInputChange,
   onModeChange,
   onFilterToggle,
+  onAllergyToggle,
   onServingChange,
   onNutritionGoalChange,
   onStapleToggle,
@@ -229,6 +235,36 @@ export function IngredientForm({
               >
                 <p className="text-sm font-semibold">{filter.label}</p>
                 <p className="mt-1 text-xs leading-5 text-current/80">{filter.description}</p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <p className="text-sm font-semibold text-ink">Allergies and hard avoids</p>
+          <p className="text-sm text-ink/65">
+            PantryPal will avoid building meals around these ingredients and common related extras.
+          </p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {ALLERGY_OPTIONS.map((option) => {
+            const isActive = selectedAllergies.includes(option.id);
+
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => onAllergyToggle(option.id)}
+                className={`rounded-[1.15rem] border px-4 py-3 text-left transition ${
+                  isActive
+                    ? "border-coral bg-coral/10 text-coral"
+                    : "border-ink/10 bg-oat text-ink hover:border-coral/35"
+                }`}
+              >
+                <p className="text-sm font-semibold">{option.label}</p>
+                <p className="mt-1 text-xs leading-5 text-current/80">{option.description}</p>
               </button>
             );
           })}

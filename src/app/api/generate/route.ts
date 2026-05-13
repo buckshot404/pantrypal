@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import type {
+  Allergy,
   DietaryFilter,
   MealResponse,
   MealSuggestion,
@@ -55,7 +56,17 @@ const GROCERY_CATEGORY_MAP: Record<string, string> = {
   salt: "Pantry"
 };
 
-function buildSubstitutions(ingredients: string[]) {
+const ALLERGY_BLOCKLIST: Record<Allergy, string[]> = {
+  dairy: ["butter", "yogurt", "cheese", "milk", "cream"],
+  eggs: ["egg", "eggs"],
+  gluten: ["pasta", "bread", "tortilla", "tortillas", "flour", "breadcrumbs"],
+  peanuts: ["peanut", "peanuts", "peanut butter"],
+  "tree-nuts": ["almond", "almonds", "cashew", "cashews", "walnut", "walnuts", "pecan", "pecans"],
+  soy: ["soy", "soy sauce", "tofu", "edamame"],
+  shellfish: ["shrimp", "crab", "lobster", "shellfish", "prawn", "prawns"]
+};
+
+function buildSubstitutions(ingredients: string[], allergies: Allergy[]) {
   const substitutions: Record<string, string> = {
     rice: "swap with quinoa or couscous if that is what you have",
     pasta: "swap with rice or noodles for the same meal base",
@@ -71,6 +82,13 @@ function buildSubstitutions(ingredients: string[]) {
 
   return ingredients
     .filter((item) => substitutions[item])
+    .filter((item) => {
+      const swap = substitutions[item];
+      return (
+        filterAllergyUnsafeItems([item], allergies).length > 0 &&
+        filterAllergyUnsafeItems([swap], allergies).length > 0
+      );
+    })
     .slice(0, 3)
     .map((item) => ({
       original: item,
@@ -82,6 +100,7 @@ function buildPrompt(
   ingredients: string[],
   mode: PantryMode,
   filters: DietaryFilter[],
+  allergies: Allergy[],
   servingSize: ServingSize,
   staples: string[],
   includeWeeklyPlan: boolean,
@@ -103,6 +122,10 @@ function buildPrompt(
     staples.length > 0
       ? `Assume the user already has these pantry staples: ${staples.join(", ")}.`
       : "Do not assume any pantry staples beyond the provided ingredients.";
+  const allergyInstruction =
+    allergies.length > 0
+      ? `Strictly avoid these allergens and related ingredients in meals, missing items, substitutions, and instructions: ${allergies.join(", ")}.`
+      : "No allergy exclusions are active.";
   const nutritionInstruction = `Optimize premium planning for this nutrition goal: ${nutritionGoal}.`;
   const useFirstInstruction =
     useFirstIngredients.length > 0
@@ -178,6 +201,7 @@ Rules:
 - Do not include markdown or commentary.
 - ${modeInstruction}
 - ${filterInstruction}
+- ${allergyInstruction}
 - ${stapleInstruction}
 - ${nutritionInstruction}
 - ${useFirstInstruction}
@@ -314,6 +338,18 @@ function sanitizeMealResponse(data: MealResponse): MealResponse {
     useFirstIngredients: Array.isArray(data.useFirstIngredients)
       ? data.useFirstIngredients.filter((item): item is string => typeof item === "string")
       : [],
+    allergies: Array.isArray(data.allergies)
+      ? data.allergies.filter(
+          (item): item is Allergy =>
+            item === "dairy" ||
+            item === "eggs" ||
+            item === "gluten" ||
+            item === "peanuts" ||
+            item === "tree-nuts" ||
+            item === "soy" ||
+            item === "shellfish"
+        )
+      : [],
     rescueMode: data.rescueMode === true,
     nutritionGoal:
       data.nutritionGoal === "high-protein" ||
@@ -330,14 +366,32 @@ function titleCase(value: string) {
   return value.replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function pickExtras(ingredients: string[], count: number) {
-  return EXTRA_ITEMS.filter((item) => !ingredients.includes(item)).slice(0, count);
+function filterAllergyUnsafeItems(items: string[], allergies: Allergy[]) {
+  if (allergies.length === 0) {
+    return items;
+  }
+
+  return items.filter((item) => {
+    const normalized = item.toLowerCase();
+
+    return !allergies.some((allergy) =>
+      ALLERGY_BLOCKLIST[allergy].some((blocked) => normalized.includes(blocked))
+    );
+  });
+}
+
+function pickExtras(ingredients: string[], count: number, allergies: Allergy[]) {
+  return filterAllergyUnsafeItems(
+    EXTRA_ITEMS.filter((item) => !ingredients.includes(item)),
+    allergies
+  ).slice(0, count);
 }
 
 function buildDemoMeal(
   title: string,
   summary: string,
   ingredients: string[],
+  allergies: Allergy[],
   fitLabel: MealSuggestion["fitLabel"],
   timeEstimate: string,
   steps: string[],
@@ -350,7 +404,7 @@ function buildDemoMeal(
     summary,
     fitLabel,
     missingIngredients,
-    substitutions: buildSubstitutions(ingredients),
+    substitutions: buildSubstitutions(ingredients, allergies),
     steps,
     finishTip,
     timeEstimate,
@@ -380,17 +434,23 @@ function generateDemoMeals(
   ingredients: string[],
   mode: PantryMode,
   filters: DietaryFilter[],
+  allergies: Allergy[],
   servingSize: ServingSize,
   staples: string[],
   nutritionGoal: NutritionGoal,
   useFirstIngredients: string[],
   rescueMode: boolean
 ): MealResponse {
-  const primary = useFirstIngredients[0] ?? ingredients[0] ?? "pantry staples";
-  const secondary = useFirstIngredients[1] ?? ingredients[1] ?? "whatever is in the fridge";
-  const ingredientsAndStaples = Array.from(new Set([...ingredients, ...staples]));
-  const extraOne = pickExtras(ingredientsAndStaples, 1);
-  const extraTwo = pickExtras(ingredientsAndStaples, 2);
+  const safeIngredients = filterAllergyUnsafeItems(ingredients, allergies);
+  const safeStaples = filterAllergyUnsafeItems(staples, allergies);
+  const safeUseFirstIngredients = filterAllergyUnsafeItems(useFirstIngredients, allergies).filter((item) =>
+    safeIngredients.includes(item)
+  );
+  const primary = safeUseFirstIngredients[0] ?? safeIngredients[0] ?? "pantry staples";
+  const secondary = safeUseFirstIngredients[1] ?? safeIngredients[1] ?? "whatever is in the fridge";
+  const ingredientsAndStaples = Array.from(new Set([...safeIngredients, ...safeStaples]));
+  const extraOne = pickExtras(ingredientsAndStaples, 1, allergies);
+  const extraTwo = pickExtras(ingredientsAndStaples, 2, allergies);
   const timeFast = mode === "lazy" ? "15 minutes" : mode === "comfort" ? "22 minutes" : "12 minutes";
   const timeSlow = mode === "lazy" ? "20 minutes" : mode === "comfort" ? "28 minutes" : "15 minutes";
   const filterText =
@@ -406,12 +466,23 @@ function generateDemoMeals(
   const rescueTitle = rescueMode ? "rescue" : "week";
   const comfortText =
     mode === "comfort" ? " with a cozy, comforting angle" : "";
+  const wrapBase = allergies.includes("gluten") ? "lettuce cups or a bowl base" : "wraps, tortillas, or lettuce cups";
+  const creamyAddIn = allergies.includes("dairy") ? "salsa or broth" : "yogurt, salsa, or broth";
+  const finishingTouch =
+    allergies.includes("eggs") && allergies.includes("dairy")
+      ? "fresh herbs or a crunchy topping"
+      : allergies.includes("eggs")
+        ? "cheese or fresh herbs"
+        : allergies.includes("dairy")
+          ? "an egg or fresh herbs"
+          : "an egg, herbs, or cheese";
 
   const meals: MealSuggestion[] = [
     buildDemoMeal(
       `${titleCase(primary)} ${rescueMode ? "rescue skillet" : "skillet toss"}`,
       `A fast one-pan ${rescueTitle}${filterText}${comfortText} that leans on what you already have for a ${goalText}.`,
-      ingredients,
+      safeIngredients,
+      allergies,
       "Uses most ingredients",
       timeFast,
       [
@@ -428,24 +499,26 @@ function generateDemoMeals(
     buildDemoMeal(
       `${rescueMode ? "Emergency" : mode === "comfort" ? "Toasty" : "Loaded"} ${titleCase(primary)} wraps`,
       `A flexible wrap-style meal that turns leftovers into something that feels planned${mode === "comfort" ? " and a little more cozy" : ""}.`,
-      ingredients,
+      safeIngredients,
+      allergies,
       "Requires 1-2 extra items",
       timeFast,
       [
         `Warm the ${primary} in a skillet over medium heat until it is heated through and starting to brown.`,
         `Add the ${secondary} plus any sauce or seasoning and stir for 2 minutes so the filling tastes cohesive.`,
-        "Warm wraps, tortillas, or lettuce cups separately so they are easy to fold without tearing.",
+        `Warm ${wrapBase} separately so they are easy to use without tearing or getting soggy.`,
         "Fill each wrap generously, then fold tightly and press seam-side down in the pan for 1 minute if you want crunch.",
         "Slice and serve while warm so the filling stays melty or juicy."
       ],
-      "If the filling feels dry, add a spoonful of yogurt, salsa, or broth before wrapping.",
+      `If the filling feels dry, add a spoonful of ${creamyAddIn} before serving.`,
       extraTwo,
       servingSize
     ),
     buildDemoMeal(
       `${titleCase(primary)} ${rescueMode ? "pantry bowl" : "rice bowl"}`,
       `A practical bowl meal that uses your pantry base and one simple finishing touch${mode === "comfort" ? " with a softer, warmer feel" : ""}.`,
-      ingredients,
+      safeIngredients,
+      allergies,
       "Uses most ingredients",
       timeSlow,
       [
@@ -462,7 +535,8 @@ function generateDemoMeals(
     buildDemoMeal(
       `${rescueMode ? "Bare-bones" : mode === "comfort" ? "Skillet comfort" : "Pantry"} hash with ${titleCase(primary)}`,
       `A low-effort clean-out-the-fridge option that still feels like a real meal${mode === "comfort" ? " you would actually look forward to" : ""}.`,
-      ingredients,
+      safeIngredients,
+      allergies,
       "Requires 1-2 extra items",
       mode === "lazy" ? "18 minutes" : "14 minutes",
       [
@@ -470,10 +544,10 @@ function generateDemoMeals(
         "Heat a skillet over medium-high heat and spread everything out so it browns instead of steaming.",
         "Stir only occasionally for 5 to 7 minutes until the edges pick up deep color.",
         "Add a splash of sauce, broth, or seasoning and toss until it coats the pan evenly.",
-        "Finish with an egg, herbs, or cheese if you have them and serve while everything is still sizzling."
+        `Finish with ${finishingTouch} if you have it and serve while everything is still sizzling.`
       ],
       "A little hot sauce or black pepper at the end makes this feel more intentional than improvised.",
-      pickExtras(ingredientsAndStaples, 2),
+      pickExtras(ingredientsAndStaples, 2, allergies),
       servingSize
     )
   ];
@@ -515,8 +589,9 @@ function generateDemoMeals(
     groceryList,
     source: "demo",
     note: "Demo mode is active, so these meal ideas are generated locally instead of calling the OpenAI API.",
-    staplesUsed: staples,
-    useFirstIngredients,
+    staplesUsed: safeStaples,
+    useFirstIngredients: safeUseFirstIngredients,
+    allergies,
     rescueMode,
     nutritionGoal,
     weeklyPlan,
@@ -529,6 +604,7 @@ export async function POST(request: Request) {
     ingredients?: string[];
     mode?: PantryMode;
     filters?: DietaryFilter[];
+    allergies?: Allergy[];
     servingSize?: ServingSize;
     staples?: string[];
     includeWeeklyPlan?: boolean;
@@ -555,6 +631,18 @@ export async function POST(request: Request) {
           filter === "gluten-free" ||
           filter === "high-protein"
     )
+    : [];
+  const allergies = Array.isArray(body.allergies)
+    ? body.allergies.filter(
+        (allergy): allergy is Allergy =>
+          allergy === "dairy" ||
+          allergy === "eggs" ||
+          allergy === "gluten" ||
+          allergy === "peanuts" ||
+          allergy === "tree-nuts" ||
+          allergy === "soy" ||
+          allergy === "shellfish"
+      )
     : [];
   const servingSize = body.servingSize === "1-2" || body.servingSize === "5+"
     ? body.servingSize
@@ -590,6 +678,7 @@ export async function POST(request: Request) {
           ingredients,
           mode,
           filters,
+          allergies,
           servingSize,
           staples,
           nutritionGoal,
@@ -619,6 +708,7 @@ export async function POST(request: Request) {
             ingredients,
             mode,
             filters,
+            allergies,
             servingSize,
             staples,
             includeWeeklyPlan,
@@ -644,7 +734,14 @@ export async function POST(request: Request) {
       throw new Error("No usable meals were generated.");
     }
 
-    return NextResponse.json(sanitized);
+    return NextResponse.json({
+      ...sanitized,
+      allergies,
+      staplesUsed: staples,
+      useFirstIngredients,
+      rescueMode,
+      nutritionGoal
+    });
   } catch (error) {
     const status = typeof error === "object" && error !== null && "status" in error
       ? Number((error as { status?: unknown }).status)
@@ -657,6 +754,7 @@ export async function POST(request: Request) {
             ingredients,
             mode,
             filters,
+            allergies,
             servingSize,
             staples,
             nutritionGoal,

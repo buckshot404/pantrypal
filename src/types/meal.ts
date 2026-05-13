@@ -1,5 +1,6 @@
 export type PantryMode = "lazy" | "struggle" | "comfort";
 export type DietaryFilter = "vegetarian" | "dairy-free" | "gluten-free" | "high-protein";
+export type Allergy = "dairy" | "eggs" | "gluten" | "peanuts" | "tree-nuts" | "soy" | "shellfish";
 export type ServingSize = "1-2" | "3-4" | "5+";
 export type NutritionGoal = "balanced" | "high-protein" | "lower-carb" | "budget-conscious";
 export type WeeklyPlanDay =
@@ -34,6 +35,7 @@ export type MealResponse = {
   note?: string;
   staplesUsed?: string[];
   useFirstIngredients?: string[];
+  allergies?: Allergy[];
   rescueMode?: boolean;
   nutritionGoal?: NutritionGoal;
   groceryExport?: {

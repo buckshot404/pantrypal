@@ -1,4 +1,4 @@
-import type { DietaryFilter, NutritionGoal, PantryMode, ServingSize } from "@/types/meal";
+import type { Allergy, DietaryFilter, NutritionGoal, PantryMode, ServingSize } from "@/types/meal";
 
 export const MODE_COPY: Record<
   PantryMode,
@@ -50,6 +50,48 @@ export const DIETARY_FILTERS: Array<{
     id: "high-protein",
     label: "High protein",
     description: "Lean toward filling meals with more protein."
+  }
+];
+
+export const ALLERGY_OPTIONS: Array<{
+  id: Allergy;
+  label: string;
+  description: string;
+}> = [
+  {
+    id: "dairy",
+    label: "Dairy",
+    description: "Avoid milk, cheese, cream, and butter."
+  },
+  {
+    id: "eggs",
+    label: "Eggs",
+    description: "Skip whole eggs and egg-based add-ins."
+  },
+  {
+    id: "gluten",
+    label: "Gluten",
+    description: "Avoid wheat-based breads, pasta, and flour items."
+  },
+  {
+    id: "peanuts",
+    label: "Peanuts",
+    description: "Avoid peanuts and peanut butter."
+  },
+  {
+    id: "tree-nuts",
+    label: "Tree nuts",
+    description: "Avoid almonds, walnuts, pecans, cashews, and similar nuts."
+  },
+  {
+    id: "soy",
+    label: "Soy",
+    description: "Avoid soy sauce, tofu, and soy-based ingredients."
+  },
+  {
+    id: "shellfish",
+    label: "Shellfish",
+    description: "Avoid shrimp, crab, lobster, and similar seafood."
   }
 ];
 
